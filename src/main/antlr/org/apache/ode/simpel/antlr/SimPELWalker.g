@@ -60,7 +60,7 @@ wait_ex	:	^(WAIT expr);
 
 exit	:	EXIT;
 
-//function:	^(FUNCTION );
+function:	^(FUNCTION ID);
 
 // XML
 xmlElement

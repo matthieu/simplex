@@ -8,7 +8,7 @@ options {
 tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; 
-    EXPR; EXT_EXPR; XML_LITERAL; FUNCTION;
+    EXPR; EXT_EXPR; XML_LITERAL;
 }
 @parser::header {
 package org.apache.ode.simpel.antlr;
@@ -42,7 +42,7 @@ package org.apache.ode.simpel.antlr;
 
 program	:	declaration+;
 declaration
-	:	function | process;
+	:	funct | process;
 
 // Process
 process	:	'process' ID block -> ^(PROCESS ID block);
@@ -91,7 +91,7 @@ wait_ex	:	'wait' expr -> ^(WAIT expr);
 exit	:	'exit' -> ^(EXIT);
 
 // TODO This will not work for any function whose code contains braces
-function:	'function' f=ID '(' ID? (',' ID)* ')' '{' (options {greedy=false;} : .)* '}';
+funct	:	'function'^ f=ID '(' ID? (','! ID)* ')' '{'! (options {greedy=false;} : .)* '}'!;
 
 // Expressions
 expr	:	s_expr | EXT_EXPR;

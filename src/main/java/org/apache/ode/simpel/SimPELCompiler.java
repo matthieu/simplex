@@ -1,7 +1,6 @@
 package org.apache.ode.simpel;
 
 import org.antlr.runtime.ANTLRReaderStream;
-import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeParser;
@@ -12,6 +11,7 @@ import uk.co.badgersinfoil.e4x.antlr.*;
 
 import java.io.StringReader;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class SimPELCompiler {
@@ -31,7 +31,11 @@ public class SimPELCompiler {
 
         if (t == null) {
             System.out.println("There were parser errors.");
+            throw new RuntimeException("Parse errors!");
         } else {
+            //  Handle functions separately
+            handleFunctions(t);
+
             // Pass the tree to the walker for compilation
             CommonTreeNodeStream nodes = new CommonTreeNodeStream(t);
             SimPELWalker walker = new SimPELWalker(nodes);
@@ -45,13 +49,42 @@ public class SimPELCompiler {
         }
     }
 
+    private static void handleFunctions(Tree t) {
+        ArrayList<Integer> toRemove = new ArrayList<Integer>();
+        for(int m = 0; m < t.getChildCount(); m++) {
+            if ("function".equals(t.getChild(m).getText())) {
+                Tree funcTree = t.getChild(m);
+
+                // Extracting function structure
+                ArrayList<String> params = new ArrayList<String>();
+                StringBuffer body = new StringBuffer();
+                boolean signature = true;
+                for (int p = 2; p < funcTree.getChildCount(); p++) {
+                    String txt = funcTree.getChild(p).getText();
+                    if (")".equals(txt)) signature = false;
+                    if (signature) params.add(txt);
+                    else body.append(txt);
+                }
+                System.out.println("Found function: " + funcTree.getChild(0) + "(" + params + ") {"
+                        + body.toString() + "}");
+
+                toRemove.add(m);
+            }
+        }
+        // Voluntarily not using an iterator, we want to be index based
+        for(int m = 0; m < toRemove.size(); m++) {
+            t.deleteChild(toRemove.get(m));
+            for(int n = 0; n < toRemove.size(); n++) {
+                if (toRemove.get(n) > toRemove.get(m)) toRemove.set(n, toRemove.get(n) - 1);
+            }
+        }
+    }
+
     private static void rewriteTokens(HashMap<Integer, Integer> tokenMapping, String[] tokenNames,
                                       LinkedListTree t, TreeParser targetLexer, boolean xmlNode) {
-//        System.out.println("### " + t.token);
         if (t.token != null && tokenMapping.get(t.token.getType()) != null && (in(tokenNames, t.token.getText()) || xmlNode)) {
             t.token.setType(tokenMapping.get(t.token.getType()));
             xmlNode = true;
-            System.out.print(t.token.getText() + "(" + t.token.getType() + ") ");
         }
         for(int m = 0; m < t.getChildCount(); m++) {
             rewriteTokens(tokenMapping, tokenNames, (LinkedListTree) t.getChild(m), targetLexer, xmlNode);
