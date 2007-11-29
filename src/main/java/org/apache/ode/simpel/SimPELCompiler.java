@@ -7,6 +7,7 @@ import org.antlr.runtime.tree.TreeParser;
 import org.apache.ode.simpel.antlr.SimPELLexer;
 import org.apache.ode.simpel.antlr.SimPELParser;
 import org.apache.ode.simpel.antlr.SimPELWalker;
+import org.apache.ode.simpel.util.DefaultErrorListener;
 import uk.co.badgersinfoil.e4x.antlr.*;
 
 import java.io.StringReader;
@@ -16,40 +17,52 @@ import java.util.HashMap;
 
 public class SimPELCompiler {
 
-    public static void parseProcess(String process) throws Exception {
+    private ErrorListener el;
+
+    public ErrorListener getErrorListener() {
+        return el;
+    }
+
+    public void setErrorListener(ErrorListener el) {
+        this.el = el;
+    }
+
+    public void compileProcess(String process) throws Exception {
         ANTLRReaderStream charstream = new ANTLRReaderStream(new StringReader(process));
+        ErrorListener errListener = (el == null ? new DefaultErrorListener() : el);
+
         SimPELLexer lexer = new SimPELLexer(charstream);
+        lexer.setErrorListener(errListener);
         LinkedListTokenSource linker = new LinkedListTokenSource(lexer);
         LinkedListTokenStream tokenStream = new LinkedListTokenStream(linker);
+
         SimPELParser parser = new SimPELParser(tokenStream);
         parser.setTreeAdaptor(new LinkedListTreeAdaptor());
         parser.setInput(lexer, charstream);
+        parser.setErrorListener(errListener);
 
         SimPELParser.program_return result = parser.program();
         // pull out the tree and cast it
         Tree t = (Tree)result.getTree();
 
-        if (t == null) {
-            System.out.println("There were parser errors.");
-            throw new RuntimeException("Parse errors!");
-        } else {
+        if (t != null) {
             //  Handle functions separately
             handleFunctions(t);
 
             // Pass the tree to the walker for compilation
             CommonTreeNodeStream nodes = new CommonTreeNodeStream(t);
             SimPELWalker walker = new SimPELWalker(nodes);
+            walker.setErrorListener(el);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
-            System.out.println("=> " + tokenMapping);
             rewriteTokens(tokenMapping, E4XParser.tokenNames, (LinkedListTree) t, walker, false);
-            System.out.println("\n"+t.toStringTree()); // print out the tree
+            // System.out.println("\n"+t.toStringTree()); // print out the tree
 
             nodes.setTokenStream(tokenStream);
             walker.program();
         }
     }
 
-    private static void handleFunctions(Tree t) {
+    private void handleFunctions(Tree t) {
         ArrayList<Integer> toRemove = new ArrayList<Integer>();
         for(int m = 0; m < t.getChildCount(); m++) {
             if ("function".equals(t.getChild(m).getText())) {
@@ -61,7 +74,8 @@ public class SimPELCompiler {
                 boolean signature = true;
                 for (int p = 2; p < funcTree.getChildCount(); p++) {
                     String txt = funcTree.getChild(p).getText();
-                    if (")".equals(txt)) signature = false;
+                    if (")".equals(txt)) { signature = false; continue; }
+                    
                     if (signature) params.add(txt);
                     else body.append(txt);
                 }
@@ -80,7 +94,7 @@ public class SimPELCompiler {
         }
     }
 
-    private static void rewriteTokens(HashMap<Integer, Integer> tokenMapping, String[] tokenNames,
+    private void rewriteTokens(HashMap<Integer, Integer> tokenMapping, String[] tokenNames,
                                       LinkedListTree t, TreeParser targetLexer, boolean xmlNode) {
         if (t.token != null && tokenMapping.get(t.token.getType()) != null && (in(tokenNames, t.token.getText()) || xmlNode)) {
             t.token.setType(tokenMapping.get(t.token.getType()));
@@ -99,7 +113,7 @@ public class SimPELCompiler {
      * @param target
      * @return
      */
-    private static HashMap<Integer, Integer> buildTokenMap(String[] tokenNames, Class source, Class target) {
+    private HashMap<Integer, Integer> buildTokenMap(String[] tokenNames, Class source, Class target) {
         HashMap<Integer, Integer> tokenMapping = new HashMap<Integer, Integer>();
         for (String name : tokenNames) {
             try {
@@ -111,7 +125,7 @@ public class SimPELCompiler {
         return tokenMapping;
     }
 
-    private static boolean in(String[] arr, String elmt) {
+    private boolean in(String[] arr, String elmt) {
         for (String s : arr)
             if (s.equals(elmt)) return true;
         return false;

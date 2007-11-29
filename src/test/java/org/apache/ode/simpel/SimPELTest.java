@@ -26,7 +26,7 @@ public class SimPELTest extends TestCase {
         "      partner_pl.partner_start_op(msg_in)              \n" +
         "      resp = receive(partner_pl, partner_reply_op)     \n" +
         "    }                                                  \n" +
-        "    reply resp                                         \n" +
+        "    reply(resp)                                        \n" +
         "  }                                                    \n" +
         "}                                                        ";
 
@@ -34,8 +34,7 @@ public class SimPELTest extends TestCase {
         System.out.println("Parsing process:");
         System.out.println(PROCESS);
         // Just checking that we can parse for now.
-        SimPELCompiler.parseProcess(PROCESS);
+        new SimPELCompiler().compileProcess(PROCESS);
     }
 
 }
-

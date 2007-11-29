@@ -16,9 +16,22 @@ package org.apache.ode.simpel.antlr;
 import uk.co.badgersinfoil.e4x.antlr.LinkedListTokenStream;
 import uk.co.badgersinfoil.e4x.antlr.LinkedListTree;
 import uk.co.badgersinfoil.e4x.E4XHelper;
+import org.apache.ode.simpel.ErrorListener;
 }
 @lexer::header {
 package org.apache.ode.simpel.antlr;
+import org.apache.ode.simpel.ErrorListener;
+}
+
+@lexer::members {
+    private ErrorListener el;
+
+    public void setErrorListener(ErrorListener el) {
+    	this.el = el;
+    }
+    public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
+    	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+    }
 }
 
 @parser::members {
@@ -26,15 +39,23 @@ package org.apache.ode.simpel.antlr;
 
     private SimPELLexer lexer;
     private CharStream cs;
+    private ErrorListener el;
     
     public void setInput(SimPELLexer lexer, CharStream cs) {
         this.lexer = lexer;
         this.cs = cs;
     }
+    public void setErrorListener(ErrorListener el) {
+    	this.el = el;
+    }
 
     /** Handle 'island grammar' for embeded XML-literal elements. */
     private LinkedListTree parseXMLLiteral() throws RecognitionException {
         return E4XHelper.parseXMLLiteral(lexer, cs, (LinkedListTokenStream)input);
+    }
+    
+    public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
+    	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
     }
 }
 
@@ -48,7 +69,7 @@ declaration
 process	:	'process' ID block -> ^(PROCESS ID block);
 
 process_stmt
-	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall
+	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall
 		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
 		
 block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
@@ -56,8 +77,6 @@ block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
 // Structured activities
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
-
-sequence:	'sequence' block -> ^(SEQUENCE block);
 
 // TODO links
 flow	:	'parrallel' '{' exprs+=process_stmt '}' ('and' '{' exprs+=process_stmt '}')* -> ^(FLOW $exprs);
@@ -78,7 +97,7 @@ invoke	:	p=ID '.' o=ID '(' in=ID? ')' -> ^(INVOKE $p $o $in?);
 
 receive	:	'receive' '(' p=ID ',' o=ID ')' ('(' m=ID ')')? block? -> ^(RECEIVE $p $o $m? block?);
 
-reply	:	'reply' ID -> ^(REPLY ID);
+reply	:	'reply' '(' ID ')' -> ^(REPLY ID);
 
 assign	:	ID '=' rvalue -> ^(ASSIGN ID rvalue);
 rvalue
@@ -99,7 +118,7 @@ expr	:	s_expr | EXT_EXPR;
 s_expr	:	condExpr;
 condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
-mexpr	:	atom (('*'|'/') ^ atom)* ;
+mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
 atom	:	ID | INT | '(' s_expr ')' -> s_expr;
 
 // In-line XML
@@ -119,6 +138,12 @@ EXT_EXPR
 // Basic tokens
 ID	:	(LETTER | '_' ) (LETTER | DIGIT | '_' )*;
 INT	:	(DIGIT )+ ;
+STRING	:	'"' ( ESCAPE_SEQ | ~('\\'|'"') )* '"';
+ESCAPE_SEQ
+	:	'\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\');
+
+SL_COMMENTS
+	:	('#'|'//') .* CR { $channel = HIDDEN; };
 CR	:	('\r' | '\n' )+ { $channel = HIDDEN; };
 WS	:	( ' ' | '\t' )+ { skip(); };
 fragment NAMECHAR
@@ -127,4 +152,3 @@ fragment DIGIT
     :    '0'..'9';
 fragment LETTER
     : 'a'..'z' | 'A'..'Z';
-	

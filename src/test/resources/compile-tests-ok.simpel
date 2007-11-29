@@ -1,0 +1,40 @@
+# NOTE: The "==" line serves as a separator between test cases.
+
+#=============================================================
+# Basic receive / reply
+#
+
+process ReceiveReply {
+  receive(my_pl, start_op) (msg_in) {
+    reply(msg_in)
+  }
+}
+
+#=============================================================
+# Hello World (basic assignment)
+#
+
+process HelloWorld {
+  receive(my_pl, hello_op) (msg_in) {
+    msg_out = msg_in + " World"
+    reply(msg_out)
+  }
+}
+
+#=============================================================
+# External Counter
+#
+
+function myFunc(p1, p2) {
+   return (p1 + p2 < 10);
+}
+process ExternalCounter {
+  receive(my_pl, start_op) (msg_in) {
+    resp = <root><count start="0">0</count></root>
+    while(resp < 10) {
+      partner_pl.partner_start_op(msg_in)
+      resp = receive(partner_pl, partner_reply_op)
+    }
+    reply(resp)
+  }
+}

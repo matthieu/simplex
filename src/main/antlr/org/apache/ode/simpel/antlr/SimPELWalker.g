@@ -10,6 +10,18 @@ tokens {
 @header {
 package org.apache.ode.simpel.antlr;
 import uk.co.badgersinfoil.e4x.antlr.LinkedListTree;
+import org.apache.ode.simpel.ErrorListener;
+}
+
+@members {
+    private ErrorListener el;
+    
+    public void setErrorListener(ErrorListener el) {
+    	this.el = el;
+    }
+    public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
+    	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+    }
 }
 
 program	:	declaration+;
@@ -86,4 +98,4 @@ s_expr	:	^('==' s_expr s_expr)
 	|	^('-' s_expr s_expr) 
 	|	^('*' s_expr s_expr) 
 	|	^('/' s_expr s_expr) 
-	|	ID | INT;
+	|	ID | INT | STRING;
