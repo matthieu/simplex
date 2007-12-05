@@ -32,7 +32,7 @@ declaration
 process	:	^(PROCESS ID block) { System.out.println("PROCESS " + $ID.text); };
 
 process_stmt
-	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall
+	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
 		
 block	:	^(SEQUENCE process_stmt);
@@ -54,6 +54,12 @@ until_ex:	^(UNTIL expr block);
 
 foreach	:	^(FOREACH ID init=expr cond=expr assign block);
 forall	:	^(FORALL ID from=expr to=expr);
+
+try_ex	:	^(TRY block catch_ex* catch_all?);
+catch_all
+	:	^(CATCH_ALL ID block);
+		
+catch_ex:	^(CATCH ID ID block);
 
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);

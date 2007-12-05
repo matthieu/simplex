@@ -7,7 +7,7 @@ options {
 }
 tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
-    RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; 
+    RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL;
     EXPR; EXT_EXPR; XML_LITERAL;
 }
 @parser::header {
@@ -66,20 +66,21 @@ declaration
 	:	funct | process;
 
 // Process
-process	:	'process' ID block -> ^(PROCESS ID block);
+process	:	'process' ns_id block -> ^(PROCESS ns_id block);
 
-process_stmt
-	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall
-		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
-		
 block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
 
+process_stmt
+	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex
+		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
+		
 // Structured activities
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
 
 // TODO links
-flow	:	'parrallel' '{' exprs+=process_stmt '}' ('and' '{' exprs+=process_stmt '}')* -> ^(FLOW $exprs);
+flow	:	'parrallel' '{' exprs+=process_stmt '}' ('and' '{' exprs+=process_stmt '}')* 
+		-> ^(FLOW $exprs);
 
 if_ex	:	'if' '(' expr ')' block
 		('else if' '(' expr ')' block)?
@@ -90,12 +91,16 @@ while_ex:	'while' '(' expr ')' block -> ^(WHILE expr block);
 until_ex:	'do' block 'until' '(' expr ')' -> ^(UNTIL expr block);
 
 foreach	:	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' block -> ^(FOREACH ID $init $cond assign block);
-forall	:	'forall' '(' ID '=' from=expr '..' to=expr ')' block -> ^(FORALL ID $from $to);
+forall	:	'forall' '(' ID '=' from=expr '..' to=expr ')' block -> ^(FORALL ID $from $to block);
+
+try_ex	:	'try' tb=block catch_ex* ('catch' '(' ID ')' cb=block)? -> ^(TRY $tb catch_ex* ^(CATCH_ALL ID $cb)?);
+		
+catch_ex:	'catch''(' ns_id ID ')' block -> ^(CATCH ns_id ID block);
 
 // Simple activities
-invoke	:	p=ID '.' o=ID '(' in=ID? ')' -> ^(INVOKE $p $o $in?);
+invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
 
-receive	:	'receive' '(' p=ID ',' o=ID ')' ('(' m=ID ')')? block? -> ^(RECEIVE $p $o $m? block?);
+receive	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? ')' block? -> ^(RECEIVE $p $o $m? block?);
 
 reply	:	'reply' '(' ID ')' -> ^(REPLY ID);
 
@@ -120,6 +125,8 @@ condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
 mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
 atom	:	ID | INT | '(' s_expr ')' -> s_expr;
+
+ns_id	:	(ID '::')? ID;
 
 // In-line XML
 

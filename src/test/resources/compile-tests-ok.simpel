@@ -5,9 +5,18 @@
 #
 
 process ReceiveReply {
-  receive(my_pl, start_op) (msg_in) {
+  receive(my_pl, start_op, msg_in) {
     reply(msg_in)
   }
+}
+
+#=============================================================
+# Basic async receive / invoke
+#
+
+process ReceiveInvoke {
+  msg_in = receive(my_pl, start_op)
+  invoke(other_pl, other_op, msg_in)
 }
 
 #=============================================================
@@ -15,9 +24,24 @@ process ReceiveReply {
 #
 
 process HelloWorld {
-  receive(my_pl, hello_op) (msg_in) {
+  receive(my_pl, hello_op, msg_in) {
     msg_out = msg_in + " World"
     reply(msg_out)
+  }
+}
+
+#=============================================================
+# Try / catch / catch all
+#
+
+process TryCatch {
+  msg_in = receive(my_pl, start_op)
+  try {
+    invoke(other_pl, other_op, msg_in)
+  } catch(SomeFault f1) {
+    invoke(fault_pl, inform_f1, f1)
+  } catch(f2) {
+    invoke(fault_pl, inform_fault, f2)
   }
 }
 
@@ -29,10 +53,10 @@ function myFunc(p1, p2) {
    return (p1 + p2 < 10);
 }
 process ExternalCounter {
-  receive(my_pl, start_op) (msg_in) {
+  receive(my_pl, start_op, msg_in) {
     resp = <root><count start="0">0</count></root>
     while(resp < 10) {
-      partner_pl.partner_start_op(msg_in)
+      invoke(partner_pl, partner_start_op, msg_in)
       resp = receive(partner_pl, partner_reply_op)
     }
     reply(resp)
