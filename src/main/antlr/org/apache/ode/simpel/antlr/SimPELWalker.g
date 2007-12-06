@@ -32,7 +32,7 @@ declaration
 process	:	^(PROCESS ID block) { System.out.println("PROCESS " + $ID.text); };
 
 process_stmt
-	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex
+	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
 		
 block	:	^(SEQUENCE process_stmt);
@@ -60,6 +60,15 @@ catch_all
 	:	^(CATCH_ALL ID block);
 		
 catch_ex:	^(CATCH ID ID block);
+
+scope_ex:	^(SCOPE ID? block scope_stmt*);
+scope_stmt
+	:	event | alarm | compensation;
+
+event	:	^(EVENT ID ID ID block);
+alarm	:	^(ALARM expr block);
+compensation
+	:	^(COMPENSATION block);
 
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);

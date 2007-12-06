@@ -20,6 +20,62 @@ process ReceiveInvoke {
 }
 
 #=============================================================
+# Scope with alarm
+#
+
+process ScopeAlarm {
+  msg_in = receive(my_pl, start_op)
+  scope {
+    wait([PT59S])
+  } alarm([PT60S]) {
+    exit
+  }
+}
+
+#=============================================================
+# Scope with event
+#
+
+process ScopeAlarm {
+  msg_in = receive(my_pl, start_op)
+  scope {
+    wait([PT60S])
+  } event(stop_pl, stop, msg) {
+    exit
+  }
+}
+
+#=============================================================
+# Scope with compensate
+#
+
+process ScopeAlarm {
+  msg_in = receive(my_pl, start_op)
+  scope {
+    wait([PT60S])
+  } compensation {
+    invoke(pl, op, msg)
+  }
+}
+
+#=============================================================
+# Scope with everything
+#
+
+process ScopeAlarm {
+  msg_in = receive(my_pl, start_op)
+  scope {
+    wait([PT60S])
+  } alarm([PT60S]) {
+    exit
+  } event(stop_pl, stop, msg) {
+    exit
+  } compensation {
+    invoke(pl, op, msg)
+  }
+}
+
+#=============================================================
 # Hello World (basic assignment)
 #
 
@@ -40,8 +96,10 @@ process TryCatch {
     invoke(other_pl, other_op, msg_in)
   } catch(SomeFault f1) {
     invoke(fault_pl, inform_f1, f1)
-  } catch(f2) {
-    invoke(fault_pl, inform_fault, f2)
+  } catch(OtherFault f2) {
+    invoke(fault_pl, inform_f2, f2)
+  } catch(unknown) {
+    invoke(fault_pl, inform_unknown_fault, unknown)
   }
 }
 

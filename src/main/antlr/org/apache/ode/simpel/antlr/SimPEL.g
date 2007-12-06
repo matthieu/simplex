@@ -7,7 +7,8 @@ options {
 }
 tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
-    RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL;
+    RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
+    ALARM; COMPENSATION; COMPENSATE;
     EXPR; EXT_EXPR; XML_LITERAL;
 }
 @parser::header {
@@ -71,7 +72,7 @@ process	:	'process' ns_id block -> ^(PROCESS ns_id block);
 block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
 
 process_stmt
-	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex
+	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
 		
 // Structured activities
@@ -95,7 +96,16 @@ forall	:	'forall' '(' ID '=' from=expr '..' to=expr ')' block -> ^(FORALL ID $fr
 
 try_ex	:	'try' tb=block catch_ex* ('catch' '(' ID ')' cb=block)? -> ^(TRY $tb catch_ex* ^(CATCH_ALL ID $cb)?);
 		
-catch_ex:	'catch''(' ns_id ID ')' block -> ^(CATCH ns_id ID block);
+catch_ex:	'catch' '(' ns_id ID ')' block -> ^(CATCH ns_id ID block);
+
+scope_ex:	'scope' ('(' ID ')')? block scope_stmt* -> ^(SCOPE ID? block scope_stmt*);
+scope_stmt
+	:	event | alarm | compensation;
+
+event	:	'event' '(' p=ID ',' o=ID ',' m=ID ')' block -> ^(EVENT $p $o $m block);
+alarm	:	'alarm' '(' expr ')' block -> ^(ALARM expr block);
+compensation
+	:	'compensation' block -> ^(COMPENSATION block);
 
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
@@ -108,9 +118,12 @@ assign	:	ID '=' rvalue -> ^(ASSIGN ID rvalue);
 rvalue
 	:	 receive | invoke | expr | xml_literal;
 	
-throw_ex:	'throw' ID -> ^(THROW ID);
+throw_ex:	'throw' '('ID')' -> ^(THROW ID);
 
-wait_ex	:	'wait' expr -> ^(WAIT expr);
+wait_ex	:	'wait' '('expr')' -> ^(WAIT expr);
+
+compensate
+	:	'compensate' ('(' ID ')')? -> ^(COMPENSATE ID?);
 
 exit	:	'exit' -> ^(EXIT);
 
@@ -140,7 +153,7 @@ xml_literal
 		'<' { xml=parseXMLLiteral(); } -> { xml };
 
 EXT_EXPR
-	:	'`' (options {greedy=false;} : .)* '`';
+	:	'[' (options {greedy=false;} : .)* ']';
 
 // Basic tokens
 ID	:	(LETTER | '_' ) (LETTER | DIGIT | '_' )*;
