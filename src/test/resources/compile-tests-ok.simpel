@@ -62,7 +62,7 @@ process ScopeAlarm {
 # Scope with everything
 #
 
-process ScopeAlarm {
+process ScopeAll {
   msg_in = receive(my_pl, start_op)
   scope {
     wait([PT60S])

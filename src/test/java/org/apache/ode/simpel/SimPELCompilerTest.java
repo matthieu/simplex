@@ -22,6 +22,7 @@ public class SimPELCompilerTest extends TestCase {
         BufferedReader reader = new BufferedReader(new FileReader(
                 getClass().getClassLoader().getResource("compile-tests-ok.simpel").getFile()));
 
+        int testCount = 0;
         String line;
         StringBuffer processBody = new StringBuffer();
         TestErrorListener l = new TestErrorListener();
@@ -44,6 +45,7 @@ public class SimPELCompilerTest extends TestCase {
                     allErrors.append("Test case ").append(testCaseName).append(" failed!!\n");
                     allErrors.append(l.messages.toString()).append("\n");
                 }
+                testCount++;
 
                 // Preparing for next test case
                 testCaseName = reader.readLine().trim().substring(2);
@@ -62,6 +64,7 @@ public class SimPELCompilerTest extends TestCase {
             System.out.println("Error compiling " + testCaseName);
             e.printStackTrace();
         }
+        testCount++;
         if (l.messages.toString().length() > 0) {
             // Shit happened
             allErrors.append("Test case ").append(testCaseName).append(" failed!!");
@@ -72,6 +75,8 @@ public class SimPELCompilerTest extends TestCase {
             System.out.println("Some test processes failed to compile:\n");
             System.out.println(allErrors.toString());
             fail("There were failures.");
+        } else {
+            System.out.println("Compiled " + testCount + " processes correctly.");
         }
     }
 
