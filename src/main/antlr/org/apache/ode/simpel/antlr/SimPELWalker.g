@@ -73,7 +73,7 @@ compensation
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
-receive	:	^(RECEIVE p=ID o=ID m=ID? block?);
+receive	:	^(RECEIVE p=ID o=ID m=ID? correlation? block?);
 
 reply	:	^(REPLY ID);
 
@@ -86,6 +86,12 @@ throw_ex:	^(THROW ID);
 wait_ex	:	^(WAIT expr);
 
 exit	:	EXIT;
+
+// Other
+correlation
+	:	^(CORRELATION corr_mapping*);
+corr_mapping
+	:	^(CORR_MAP ID ID ID);
 
 function:	^(FUNCTION ID);
 

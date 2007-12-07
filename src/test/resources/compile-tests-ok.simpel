@@ -120,3 +120,47 @@ process ExternalCounter {
     reply(resp)
   }
 }
+
+#=============================================================
+# Simple correlation
+#
+
+function orderId(orderMsg) {
+   return msg.order.orderId;
+}
+
+process SimpleCorrel {
+  orderMsg = receive(my_pl, start_op)
+
+  # The correlation implies orderId(incoming_msg) == orderId(init_msg)
+  receive(my_pl, corr_op, {orderId: orderId(orderMsg)})
+}
+
+#=============================================================
+# Two "properties", two message types
+#
+
+function orderIdFromOrder(orderMsg) {
+   return orderMsg.order.orderId;
+}
+function shipIdFromOrder(shipMsg) {
+   return shipMsg.order.shippmentId;
+}
+function orderIdFromShippment(orderMsg) {
+   return orderMsg.shippment.orderId;
+}
+function shipIdFromShippment(shipMsg) {
+   return shipMsg.shippment.shippmentId;
+}
+
+process DoubleCorrel {
+  orderMsg = receive(my_pl, start_op)
+
+  # The correlation implies orderIdFromShippment(incoming_msg) == orderIdFromOrder(order_msg)
+  # and shipIdFromShippment(incoming_msg) == shipIdFromOrder(order_msg),
+  receive(my_pl, corr_op, {
+    orderIdFromShippment: orderIdFromOrder(order_msg),
+    shipIdFromShippment: shipIdFromOrder(order_msg)
+  })
+}
+

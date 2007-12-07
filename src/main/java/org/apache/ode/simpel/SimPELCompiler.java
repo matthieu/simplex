@@ -55,7 +55,7 @@ public class SimPELCompiler {
             walker.setErrorListener(el);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
             rewriteTokens(tokenMapping, E4XParser.tokenNames, (LinkedListTree) t, walker, false);
-            // System.out.println("\n"+t.toStringTree()); // print out the tree
+//            System.out.println("\n"+t.toStringTree()); // print out the tree
 
             nodes.setTokenStream(tokenStream);
             walker.program();

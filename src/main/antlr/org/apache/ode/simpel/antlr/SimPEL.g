@@ -8,7 +8,7 @@ options {
 tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
-    ALARM; COMPENSATION; COMPENSATE;
+    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP;
     EXPR; EXT_EXPR; XML_LITERAL;
 }
 @parser::header {
@@ -18,6 +18,7 @@ import uk.co.badgersinfoil.e4x.antlr.LinkedListTokenStream;
 import uk.co.badgersinfoil.e4x.antlr.LinkedListTree;
 import uk.co.badgersinfoil.e4x.E4XHelper;
 import org.apache.ode.simpel.ErrorListener;
+import org.apache.ode.simpel.util.JSHelper;
 }
 @lexer::header {
 package org.apache.ode.simpel.antlr;
@@ -53,6 +54,10 @@ import org.apache.ode.simpel.ErrorListener;
     /** Handle 'island grammar' for embeded XML-literal elements. */
     private LinkedListTree parseXMLLiteral() throws RecognitionException {
         return E4XHelper.parseXMLLiteral(lexer, cs, (LinkedListTokenStream)input);
+    }
+    /** Handle 'island grammar' for embeded JavaScript-literal elements. */
+    private LinkedListTree parseJSLiteral() throws RecognitionException {
+        return JSHelper.parseJSLiteral(lexer, cs, (LinkedListTokenStream)input);
     }
     
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
@@ -92,7 +97,7 @@ while_ex:	'while' '(' expr ')' block -> ^(WHILE expr block);
 until_ex:	'do' block 'until' '(' expr ')' -> ^(UNTIL expr block);
 
 foreach	:	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' block -> ^(FOREACH ID $init $cond assign block);
-forall	:	'forall' '(' ID '=' from=expr '..' to=expr ')' block -> ^(FORALL ID $from $to block);
+forall	:	'forall' '(' ID '=' from=expr 'to' to=expr ')' block -> ^(FORALL ID $from $to block);
 
 try_ex	:	'try' tb=block catch_ex* ('catch' '(' ID ')' cb=block)? -> ^(TRY $tb catch_ex* ^(CATCH_ALL ID $cb)?);
 		
@@ -110,7 +115,7 @@ compensation
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
 
-receive	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? ')' block? -> ^(RECEIVE $p $o $m? block?);
+receive	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? (',' correlation)? ')' block? -> ^(RECEIVE $p $o $m? correlation? block?);
 
 reply	:	'reply' '(' ID ')' -> ^(REPLY ID);
 
@@ -127,8 +132,15 @@ compensate
 
 exit	:	'exit' -> ^(EXIT);
 
+
+// Others
 // TODO This will not work for any function whose code contains braces
-funct	:	'function'^ f=ID '(' ID? (','! ID)* ')' '{'! (options {greedy=false;} : .)* '}'!;
+correlation
+	:	'{' corr_mapping (',' corr_mapping)* '}' -> ^(CORRELATION corr_mapping*);
+corr_mapping
+	:	f1=ID ':' f2=ID '(' v=ID ')' -> ^(CORR_MAP $f1 $f2 $v);
+
+funct	:	'function'^ f=ID '(' ID? (','! ID)* ')' js_block;
 
 // Expressions
 expr	:	s_expr | EXT_EXPR;
@@ -144,13 +156,15 @@ ns_id	:	(ID '::')? ID;
 // In-line XML
 
 xml_literal
-@init {
-    LinkedListTree xml = null;
-}
+@init { LinkedListTree xml = null; }
 	:	// We have to have the LT in the outer grammar for lookahead
 		// in AS3Parser to be able to predict that the xmlLiteral rule
 		// should be used.
 		'<' { xml=parseXMLLiteral(); } -> { xml };
+
+js_block
+@init { LinkedListTree js = null; }
+	:	'{' { js=parseJSLiteral(); } -> { js };
 
 EXT_EXPR
 	:	'[' (options {greedy=false;} : .)* ']';
@@ -166,8 +180,6 @@ SL_COMMENTS
 	:	('#'|'//') .* CR { $channel = HIDDEN; };
 CR	:	('\r' | '\n' )+ { $channel = HIDDEN; };
 WS	:	( ' ' | '\t' )+ { skip(); };
-fragment NAMECHAR
-    : LETTER | DIGIT | '.' | '-' | '_' | ':';
 fragment DIGIT
     :    '0'..'9';
 fragment LETTER
