@@ -8,8 +8,8 @@ options {
 tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
-    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE;
-    EXPR; EXT_EXPR; XML_LITERAL;
+    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM; 
+    EXPR; EXT_EXPR; XML_LITERAL; CALL;
 }
 @parser::header {
 package org.apache.ode.simpel.antlr;
@@ -63,6 +63,23 @@ import org.apache.ode.simpel.ErrorListener;
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
     	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
     }
+    
+    public String getErrorMessage(RecognitionException e, String[] tokenNames) {
+	List stack = getRuleInvocationStack(e, this.getClass().getName());
+    	String msg = null;
+    	if ( e instanceof NoViableAltException ) {
+       	    NoViableAltException nvae = (NoViableAltException)e;
+       	    msg = " no viable alt; token="+e.token+" (decision="+nvae.decisionNumber+" state "+nvae.stateNumber+")"+
+                  " decision=<<"+nvae.grammarDecisionDescription+">>";
+        } else {
+           msg = super.getErrorMessage(e, tokenNames);
+        }
+        return stack+" "+msg;
+    }
+    
+    public String getTokenErrorDisplay(Token t) {
+        return t.toString();
+    }
 }
 
 // MAIN BPEL SYNTAX
@@ -74,12 +91,14 @@ declaration
 // Process
 process	:	'process' ns_id block -> ^(PROCESS ns_id block);
 
-block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
-
 process_stmt
 	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
 		| receive | ((invoke | reply | assign | throw_ex | wait_ex |  exit
 		| variables) SEMI!) )+;
+
+block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
+param_block
+	:	'{' ('|' in+=ID (',' in+=ID)* '|')? process_stmt '}' -> ^($in process_stmt);
 		
 // Structured activities
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
@@ -108,7 +127,7 @@ scope_ex:	'scope' ('(' ID ')')? block scope_stmt* -> ^(SCOPE ID? block scope_stm
 scope_stmt
 	:	event | alarm | compensation;
 
-event	:	'event' '(' p=ID ',' o=ID ',' m=ID ')' block -> ^(EVENT $p $o $m block);
+event	:	'event' '(' p=ID ',' o=ID ')' param_block -> ^(EVENT $p $o param_block);
 alarm	:	'alarm' '(' expr ')' block -> ^(ALARM expr block);
 compensation
 	:	'compensation' block -> ^(COMPENSATION block);
@@ -116,17 +135,16 @@ compensation
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
 
-receive	:	receive_block | (receive_stmt SEMI!);
-receive_block
-	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? (',' correlation)? ')' block -> ^(RECEIVE $p $o $m? correlation? block);
-receive_stmt
-	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? (',' correlation)? ')' -> ^(RECEIVE $p $o $m? correlation?);
+receive	:	receive_base (param_block | SEMI) -> ^(RECEIVE receive_base param_block?);
+receive_base
+	:	'receive' '(' p=ID ',' o=ID (',' correlation)? ')' -> ^($p $o correlation?);
 
 reply	:	'reply' '(' ID ')' -> ^(REPLY ID);
 
 assign	:	ID '=' rvalue -> ^(ASSIGN ID rvalue);
 rvalue
-	:	 receive_block | receive_stmt | invoke | expr | xml_literal;
+	:	 receive_base -> ^(RECEIVE receive_base)
+		| invoke | expr | xml_literal;
 	
 throw_ex:	'throw' '('ID')' -> ^(THROW ID);
 
@@ -145,17 +163,19 @@ variable:	ID VAR_MODS* -> ^(VARIABLE ID VAR_MODS*);
 
 partner_link
 	:	'partnerLink' pl+=ID (',' pl+=ID)* -> ^(PARTNERLINK $pl);
-// TODO This will not work for any function whose code contains braces
+
 correlation
 	:	'{' corr_mapping (',' corr_mapping)* '}' -> ^(CORRELATION corr_mapping*);
 corr_mapping
-	:	f1=ID ':' f2=ID '(' v=ID ')' -> ^(CORR_MAP $f1 $f2 $v);
+	:	f1=ID ':' expr -> ^(CORR_MAP $f1 expr);
 
 funct	:	'function'^ f=ID '(' ID? (','! ID)* ')' js_block;
 
 // Expressions
-expr	:	s_expr | EXT_EXPR;
+expr	:	s_expr | EXT_EXPR | funct_call;
 
+funct_call
+	:	p+=ID '(' p+=ID* ')' -> ^(CALL ID+);
 s_expr	:	condExpr;
 condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;

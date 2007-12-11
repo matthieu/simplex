@@ -5,8 +5,23 @@
 #
 
 process ReceiveReply {
-  receive(my_pl, start_op, msg_in) {
+  receive(my_pl, start_op) { |msg_in|
     reply(msg_in);
+  }
+}
+
+#=============================================================
+# Static XML
+#
+
+process StaticXML {
+  receive(my_pl, start_op) { |msg_in|
+    resp = <root><count start="0">0</count></root>;
+    while(resp < 10) {
+      invoke(partner_pl, partner_start_op, msg_in);
+      resp = receive(partner_pl, partner_reply_op);
+    }
+    reply(resp);
   }
 }
 
@@ -26,7 +41,7 @@ process ReceiveInvoke {
 process VariableDecl {
   msg_in = receive(my_pl, start_op);
   var temp unique;
-#  temp = [$msg_in.part/count + 2]
+  temp = [$msg_in.part/count + 2];
   invoke(other_pl, other_op, temp);
 }
 
@@ -51,7 +66,7 @@ process ScopeEvent {
   msg_in = receive(my_pl, start_op);
   scope {
     wait([PT60S]);
-  } event(stop_pl, stop, msg) {
+  } event(stop_pl, stop) { |msg|
     exit;
   }
 }
@@ -79,7 +94,7 @@ process ScopeAll {
     wait([PT60S]);
   } alarm([PT60S]) {
     exit;
-  } event(stop_pl, stop, msg) {
+  } event(stop_pl, stop) { |msg|
     exit;
   } compensation {
     invoke(pl, op, msg);
@@ -91,7 +106,7 @@ process ScopeAll {
 #
 
 process HelloWorld {
-  receive(my_pl, hello_op, msg_in) {
+  receive(my_pl, hello_op) { |msg_in|
     msg_out = msg_in + " World";
     reply(msg_out);
   }
@@ -122,7 +137,7 @@ function myFunc(p1, p2) {
    return (p1 + p2 < 10);
 }
 process ExternalCounter {
-  receive(my_pl, start_op, msg_in) {
+  receive(my_pl, start_op) { |msg_in|
     resp = <root><count start="0">0</count></root>;
     while(resp < 10) {
       invoke(partner_pl, partner_start_op, msg_in);
@@ -144,7 +159,9 @@ process SimpleCorrel {
   orderMsg = receive(my_pl, start_op);
 
   # The correlation implies orderId(incoming_msg) == orderId(init_msg)
-  receive(my_pl, corr_op, {orderId: orderId(orderMsg)});
+  var oid unique;
+  oid = orderId(orderMsg);
+  receive(my_pl, corr_op, {orderId: oid});
 }
 
 #=============================================================
@@ -169,9 +186,9 @@ process DoubleCorrel {
 
   # The correlation implies orderIdFromShippment(incoming_msg) == orderIdFromOrder(order_msg)
   # and shipIdFromShippment(incoming_msg) == shipIdFromOrder(order_msg),
-  receive(my_pl, corr_op, {
-    orderIdFromShippment: orderIdFromOrder(order_msg),
-    shipIdFromShippment: shipIdFromOrder(order_msg)
-  });
+  var oid unique, shipId unique;
+  oid = orderIdFromOrder(order_msg);
+  shipId = shipIdFromOrder(order_msg);
+  receive(my_pl, corr_op, { orderIdFromShippment: oid, shipIdFromShippment: shipId });
 }
 

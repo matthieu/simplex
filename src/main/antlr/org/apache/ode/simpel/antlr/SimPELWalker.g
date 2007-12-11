@@ -22,6 +22,24 @@ import org.apache.ode.simpel.ErrorListener;
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
     	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
     }
+    
+    public String getErrorMessage(RecognitionException e, String[] tokenNames) {
+	List stack = getRuleInvocationStack(e, this.getClass().getName());
+    	String msg = null;
+    	if ( e instanceof NoViableAltException ) {
+       	    NoViableAltException nvae = (NoViableAltException)e;
+       	    msg = " no viable alt; token="+e.token+" (decision="+nvae.decisionNumber+" state "+nvae.stateNumber+")"+
+                  " decision=<<"+nvae.grammarDecisionDescription+">>";
+        } else {
+           msg = super.getErrorMessage(e, tokenNames);
+        }
+        return stack+" "+msg;
+    }
+    
+    public String getTokenErrorDisplay(Token t) {
+        return t.toString();
+    }
+
 }
 
 program	:	declaration+;
@@ -37,6 +55,8 @@ process_stmt
 		| variable)+;
 		
 block	:	^(SEQUENCE process_stmt);
+param_block
+	:	^(ID* process_stmt);
 
 // Structured activities
 pick	:	^(PICK receive* timeout*);
@@ -66,7 +86,7 @@ scope_ex:	^(SCOPE ID? block scope_stmt*);
 scope_stmt
 	:	event | alarm | compensation;
 
-event	:	^(EVENT ID ID ID block);
+event	:	^(EVENT ID ID ID param_block);
 alarm	:	^(ALARM expr block);
 compensation
 	:	^(COMPENSATION block);
@@ -74,8 +94,8 @@ compensation
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
-receive	:	^(RECEIVE p=ID o=ID m=ID? correlation? block?);
-
+receive	:	^(RECEIVE ^(ID ID correlation?) param_block?);
+	
 reply	:	^(REPLY ID);
 
 assign	:	^(ASSIGN ID rvalue);
@@ -96,9 +116,7 @@ partner_link
 correlation
 	:	^(CORRELATION corr_mapping*);
 corr_mapping
-	:	^(CORR_MAP ID ID ID);
-
-function:	^(FUNCTION ID);
+	:	^(CORR_MAP ID expr);
 
 // XML
 xmlElement
@@ -112,8 +130,11 @@ xmlMarkup
 	:	XML_COMMENT | XML_CDATA | XML_PI;
 
 // Expressions
-expr	:	s_expr | EXT_EXPR;
+expr	:	s_expr | EXT_EXPR | funct_call;
 
+funct_call
+	:	^(CALL ID*);
+	
 s_expr	:	^('==' s_expr s_expr) 
 	|	^('!=' s_expr s_expr) 
 	|	^('<' s_expr s_expr) 
