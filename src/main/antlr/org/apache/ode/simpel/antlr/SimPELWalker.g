@@ -33,7 +33,8 @@ process	:	^(PROCESS ID block) { System.out.println("PROCESS " + $ID.text); };
 
 process_stmt
 	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
-		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
+		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit
+		| variable)+;
 		
 block	:	^(SEQUENCE process_stmt);
 
@@ -88,6 +89,10 @@ wait_ex	:	^(WAIT expr);
 exit	:	EXIT;
 
 // Other
+variable:	^(VARIABLE ID VAR_MODS*);
+
+partner_link
+	:	^(PARTNERLINK ID*);
 correlation
 	:	^(CORRELATION corr_mapping*);
 corr_mapping

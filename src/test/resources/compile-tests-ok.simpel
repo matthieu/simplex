@@ -6,7 +6,7 @@
 
 process ReceiveReply {
   receive(my_pl, start_op, msg_in) {
-    reply(msg_in)
+    reply(msg_in);
   }
 }
 
@@ -15,8 +15,19 @@ process ReceiveReply {
 #
 
 process ReceiveInvoke {
-  msg_in = receive(my_pl, start_op)
-  invoke(other_pl, other_op, msg_in)
+  msg_in = receive(my_pl, start_op);
+  invoke(other_pl, other_op, msg_in);
+}
+
+#=============================================================
+# Variable declaration
+#
+
+process VariableDecl {
+  msg_in = receive(my_pl, start_op);
+  var temp unique;
+#  temp = [$msg_in.part/count + 2]
+  invoke(other_pl, other_op, temp);
 }
 
 #=============================================================
@@ -24,11 +35,11 @@ process ReceiveInvoke {
 #
 
 process ScopeAlarm {
-  msg_in = receive(my_pl, start_op)
+  msg_in = receive(my_pl, start_op);
   scope {
-    wait([PT59S])
+    wait([PT59S]);
   } alarm([PT60S]) {
-    exit
+    exit;
   }
 }
 
@@ -36,12 +47,12 @@ process ScopeAlarm {
 # Scope with event
 #
 
-process ScopeAlarm {
-  msg_in = receive(my_pl, start_op)
+process ScopeEvent {
+  msg_in = receive(my_pl, start_op);
   scope {
-    wait([PT60S])
+    wait([PT60S]);
   } event(stop_pl, stop, msg) {
-    exit
+    exit;
   }
 }
 
@@ -49,12 +60,12 @@ process ScopeAlarm {
 # Scope with compensate
 #
 
-process ScopeAlarm {
-  msg_in = receive(my_pl, start_op)
+process ScopeCompensate {
+  msg_in = receive(my_pl, start_op);
   scope {
-    wait([PT60S])
+    wait([PT60S]);
   } compensation {
-    invoke(pl, op, msg)
+    invoke(pl, op, msg);
   }
 }
 
@@ -63,15 +74,15 @@ process ScopeAlarm {
 #
 
 process ScopeAll {
-  msg_in = receive(my_pl, start_op)
+  msg_in = receive(my_pl, start_op);
   scope {
-    wait([PT60S])
+    wait([PT60S]);
   } alarm([PT60S]) {
-    exit
+    exit;
   } event(stop_pl, stop, msg) {
-    exit
+    exit;
   } compensation {
-    invoke(pl, op, msg)
+    invoke(pl, op, msg);
   }
 }
 
@@ -81,8 +92,8 @@ process ScopeAll {
 
 process HelloWorld {
   receive(my_pl, hello_op, msg_in) {
-    msg_out = msg_in + " World"
-    reply(msg_out)
+    msg_out = msg_in + " World";
+    reply(msg_out);
   }
 }
 
@@ -91,15 +102,15 @@ process HelloWorld {
 #
 
 process TryCatch {
-  msg_in = receive(my_pl, start_op)
+  msg_in = receive(my_pl, start_op);
   try {
-    invoke(other_pl, other_op, msg_in)
+    invoke(other_pl, other_op, msg_in);
   } catch(SomeFault f1) {
-    invoke(fault_pl, inform_f1, f1)
+    invoke(fault_pl, inform_f1, f1);
   } catch(OtherFault f2) {
-    invoke(fault_pl, inform_f2, f2)
+    invoke(fault_pl, inform_f2, f2);
   } catch(unknown) {
-    invoke(fault_pl, inform_unknown_fault, unknown)
+    invoke(fault_pl, inform_unknown_fault, unknown);
   }
 }
 
@@ -112,12 +123,12 @@ function myFunc(p1, p2) {
 }
 process ExternalCounter {
   receive(my_pl, start_op, msg_in) {
-    resp = <root><count start="0">0</count></root>
+    resp = <root><count start="0">0</count></root>;
     while(resp < 10) {
-      invoke(partner_pl, partner_start_op, msg_in)
-      resp = receive(partner_pl, partner_reply_op)
+      invoke(partner_pl, partner_start_op, msg_in);
+      resp = receive(partner_pl, partner_reply_op);
     }
-    reply(resp)
+    reply(resp);
   }
 }
 
@@ -130,10 +141,10 @@ function orderId(orderMsg) {
 }
 
 process SimpleCorrel {
-  orderMsg = receive(my_pl, start_op)
+  orderMsg = receive(my_pl, start_op);
 
   # The correlation implies orderId(incoming_msg) == orderId(init_msg)
-  receive(my_pl, corr_op, {orderId: orderId(orderMsg)})
+  receive(my_pl, corr_op, {orderId: orderId(orderMsg)});
 }
 
 #=============================================================
@@ -154,13 +165,13 @@ function shipIdFromShippment(shipMsg) {
 }
 
 process DoubleCorrel {
-  orderMsg = receive(my_pl, start_op)
+  orderMsg = receive(my_pl, start_op);
 
   # The correlation implies orderIdFromShippment(incoming_msg) == orderIdFromOrder(order_msg)
   # and shipIdFromShippment(incoming_msg) == shipIdFromOrder(order_msg),
   receive(my_pl, corr_op, {
     orderIdFromShippment: orderIdFromOrder(order_msg),
     shipIdFromShippment: shipIdFromOrder(order_msg)
-  })
+  });
 }
 

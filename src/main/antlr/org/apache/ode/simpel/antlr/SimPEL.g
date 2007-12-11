@@ -8,7 +8,7 @@ options {
 tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
-    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP;
+    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE;
     EXPR; EXT_EXPR; XML_LITERAL;
 }
 @parser::header {
@@ -78,7 +78,8 @@ block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
 
 process_stmt
 	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
-		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit)+;
+		| receive | ((invoke | reply | assign | throw_ex | wait_ex |  exit
+		| variables) SEMI!) )+;
 		
 // Structured activities
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
@@ -115,13 +116,17 @@ compensation
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
 
-receive	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? (',' correlation)? ')' block? -> ^(RECEIVE $p $o $m? correlation? block?);
+receive	:	receive_block | (receive_stmt SEMI!);
+receive_block
+	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? (',' correlation)? ')' block -> ^(RECEIVE $p $o $m? correlation? block);
+receive_stmt
+	:	'receive' '(' p=ID ',' o=ID (',' m=ID)? (',' correlation)? ')' -> ^(RECEIVE $p $o $m? correlation?);
 
 reply	:	'reply' '(' ID ')' -> ^(REPLY ID);
 
 assign	:	ID '=' rvalue -> ^(ASSIGN ID rvalue);
 rvalue
-	:	 receive | invoke | expr | xml_literal;
+	:	 receive_block | receive_stmt | invoke | expr | xml_literal;
 	
 throw_ex:	'throw' '('ID')' -> ^(THROW ID);
 
@@ -134,6 +139,12 @@ exit	:	'exit' -> ^(EXIT);
 
 
 // Others
+variables
+	:	'var'! v+=variable (','! v+=variable)*;
+variable:	ID VAR_MODS* -> ^(VARIABLE ID VAR_MODS*);
+
+partner_link
+	:	'partnerLink' pl+=ID (',' pl+=ID)* -> ^(PARTNERLINK $pl);
 // TODO This will not work for any function whose code contains braces
 correlation
 	:	'{' corr_mapping (',' corr_mapping)* '}' -> ^(CORRELATION corr_mapping*);
@@ -170,6 +181,8 @@ EXT_EXPR
 	:	'[' (options {greedy=false;} : .)* ']';
 
 // Basic tokens
+VAR_MODS:	'unique' | 'external' | ('string' | 'int' | 'float');
+SEMI	:	';';
 ID	:	(LETTER | '_' ) (LETTER | DIGIT | '_' )*;
 INT	:	(DIGIT )+ ;
 STRING	:	'"' ( ESCAPE_SEQ | ~('\\'|'"') )* '"';
