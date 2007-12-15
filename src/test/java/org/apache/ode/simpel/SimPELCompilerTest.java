@@ -76,7 +76,7 @@ public class SimPELCompilerTest extends TestCase {
             System.out.println(allErrors.toString());
             fail("There were failures.");
         } else {
-            System.out.println("Compiled " + testCount + " processes correctly.");
+            System.out.println("\nCompiled " + testCount + " processes successfully.");
         }
     }
 

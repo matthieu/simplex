@@ -9,6 +9,7 @@ tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
     ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM; 
+    SIGNAL; JOIN;
     EXPR; EXT_EXPR; XML_LITERAL; CALL;
 }
 @parser::header {
@@ -93,7 +94,7 @@ process	:	'process' ns_id block -> ^(PROCESS ns_id block);
 
 process_stmt
 	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
-		| receive | ((invoke | reply | assign | throw_ex | wait_ex |  exit
+		| receive | ((invoke | reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables) SEMI!) )+;
 
 block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
@@ -105,8 +106,9 @@ pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
 
 // TODO links
-flow	:	'parrallel' '{' exprs+=process_stmt '}' ('and' '{' exprs+=process_stmt '}')* 
-		-> ^(FLOW $exprs);
+flow	:	'parrallel' '{' exprs+=process_stmt '}' ('and' '{' exprs+=process_stmt '}')* -> ^(FLOW $exprs);
+signal	:	'signal' '('ID (',' expr)? ')' -> ^(SIGNAL ID expr?);
+join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k expr?);
 
 if_ex	:	'if' '(' expr ')' block
 		('else if' '(' expr ')' block)?

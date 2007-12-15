@@ -51,7 +51,7 @@ process	:	^(PROCESS ID block) { System.out.println("PROCESS " + $ID.text); };
 
 process_stmt
 	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
-		| invoke | receive | reply | assign | throw_ex | wait_ex |  exit
+		| invoke | receive | reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variable)+;
 		
 block	:	^(SEQUENCE process_stmt);
@@ -66,6 +66,9 @@ sequence:	^(SEQUENCE block);
 
 // TODO links
 flow	:	^(FLOW process_stmt);
+signal	:	^(SIGNAL ID expr?);
+join	:	^(JOIN ID* expr?);
+
 
 if_ex	:	^(IF expr block ^(ELSEIF expr block) ^(ELSE expr block));
 

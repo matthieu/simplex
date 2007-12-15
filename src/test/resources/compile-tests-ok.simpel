@@ -192,3 +192,33 @@ process DoubleCorrel {
   receive(my_pl, corr_op, { orderIdFromShippment: oid, shipIdFromShippment: shipId });
 }
 
+#=============================================================
+# Basic flow
+#
+
+process BasicFlow {
+  orderMsg = receive(my_pl, start_op);
+  parrallel {
+    invoke(partner1_pl, partner1_op, orderMsg);
+  } and {
+    invoke(partner2_pl, partner2_op, orderMsg);
+  }
+}
+
+#=============================================================
+# Flow with signals
+#
+
+process BasicFlow {
+  orderMsg = receive(my_pl, start_op);
+  parrallel {
+    invoke(partner1_pl, partner1_op, orderMsg);
+    signal(branch1);
+  } and {
+    invoke(partner2_pl, partner2_op, orderMsg);
+    signal(branch2);
+  } and {
+    join(branch1, branch2, [$branch1 and $branch2]);
+    invoke(partner_done_pl, partner_done_op, orderMsg);
+  }
+}
