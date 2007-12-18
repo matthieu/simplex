@@ -80,6 +80,27 @@ public class SimPELCompilerTest extends TestCase {
         }
     }
 
+    public void testLoanApproval() throws Exception {
+        BufferedReader reader = new BufferedReader(new FileReader(
+                getClass().getClassLoader().getResource("loan-approval.simpel").getFile()));
+
+        String line;
+        StringBuffer processText = new StringBuffer();
+        while ((line = reader.readLine()) != null) processText.append(line).append("\n");
+
+        TestErrorListener l = new TestErrorListener();
+        SimPELCompiler comp = new SimPELCompiler();
+        comp.setErrorListener(l);
+
+        comp.compileProcess(processText.toString());
+
+        if (l.messages.toString().length() > 0) {
+            System.out.println("Loan approval failed to compile:\n");
+            System.out.println(l.messages.toString());
+            fail("There were failures.");
+        }
+    }
+
 
     private static class TestErrorListener implements ErrorListener {
         public StringBuffer messages = new StringBuffer();

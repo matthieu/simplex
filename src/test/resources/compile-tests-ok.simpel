@@ -120,12 +120,28 @@ process TryCatch {
   msg_in = receive(my_pl, start_op);
   try {
     invoke(other_pl, other_op, msg_in);
-  } catch(SomeFault f1) {
+  } catch(SomeFault) { |f1|
     invoke(fault_pl, inform_f1, f1);
-  } catch(OtherFault f2) {
+  } catch(OtherFault) { |f2|
     invoke(fault_pl, inform_f2, f2);
-  } catch(unknown) {
-    invoke(fault_pl, inform_unknown_fault, unknown);
+  } catch(unknown) { |f3|
+    invoke(fault_pl, inform_unknown_fault, f3);
+  }
+}
+
+#=============================================================
+# Namespaces
+#
+
+namespace pns = "ns:process";
+namespace fns = "ns:fault";
+
+process pns::NamespacesProcess {
+  msg_in = receive(my_pl, start_op);
+  try {
+    invoke(other_pl, other_op, msg_in);
+  } catch(fns::SomeFault) { |f1|
+    invoke(fault_pl, inform_f1, f1);
   }
 }
 
@@ -220,5 +236,20 @@ process BasicFlow {
   } and {
     join(branch1, branch2, [$branch1 and $branch2]);
     invoke(partner_done_pl, partner_done_op, orderMsg);
+  }
+}
+
+#=============================================================
+# Naming Conflicts
+#
+
+process NamingConflicts {
+  try {
+    parrallel {
+      receive_var = receive(receive_pl, receive_op);
+      signal(receive_done, [$foo > 1]);
+    }
+  } catch(foons::Foo) { |foo_var|
+    invoke(pl, op, foo_var);
   }
 }

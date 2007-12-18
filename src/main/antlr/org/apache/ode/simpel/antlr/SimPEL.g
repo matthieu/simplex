@@ -10,7 +10,7 @@ tokens {
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
     ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM; 
     SIGNAL; JOIN;
-    EXPR; EXT_EXPR; XML_LITERAL; CALL;
+    EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
 }
 @parser::header {
 package org.apache.ode.simpel.antlr;
@@ -87,7 +87,7 @@ import org.apache.ode.simpel.ErrorListener;
 
 program	:	declaration+;
 declaration
-	:	funct | process;
+	:	funct | process | namespace;
 
 // Process
 process	:	'process' ns_id block -> ^(PROCESS ns_id block);
@@ -96,6 +96,9 @@ process_stmt
 	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
 		| receive | ((invoke | reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables) SEMI!) )+;
+
+namespace
+	:	'namespace' ID '=' STRING SEMI -> ^(NAMESPACE ID STRING);
 
 block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
 param_block
@@ -121,9 +124,8 @@ until_ex:	'do' block 'until' '(' expr ')' -> ^(UNTIL expr block);
 foreach	:	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' block -> ^(FOREACH ID $init $cond assign block);
 forall	:	'forall' '(' ID '=' from=expr 'to' to=expr ')' block -> ^(FORALL ID $from $to block);
 
-try_ex	:	'try' tb=block catch_ex* ('catch' '(' ID ')' cb=block)? -> ^(TRY $tb catch_ex* ^(CATCH_ALL ID $cb)?);
-		
-catch_ex:	'catch' '(' ns_id ID ')' block -> ^(CATCH ns_id ID block);
+try_ex	:	'try' tb=block catch_ex* -> ^(TRY $tb catch_ex*);		
+catch_ex:	'catch' '(' ns_id ')' param_block -> ^(CATCH ns_id param_block);
 
 scope_ex:	'scope' ('(' ID ')')? block scope_stmt* -> ^(SCOPE ID? block scope_stmt*);
 scope_stmt
@@ -141,9 +143,9 @@ receive	:	receive_base (param_block | SEMI) -> ^(RECEIVE receive_base param_bloc
 receive_base
 	:	'receive' '(' p=ID ',' o=ID (',' correlation)? ')' -> ^($p $o correlation?);
 
-reply	:	'reply' '(' ID ')' -> ^(REPLY ID);
+reply	:	'reply' '(' ID (',' ID ',' ID)? ')' -> ^(REPLY ID (ID ID)?);
 
-assign	:	ID '=' rvalue -> ^(ASSIGN ID rvalue);
+assign	:	path_expr '=' rvalue -> ^(ASSIGN ID rvalue);
 rvalue
 	:	 receive_base -> ^(RECEIVE receive_base)
 		| invoke | expr | xml_literal;
@@ -182,9 +184,11 @@ s_expr	:	condExpr;
 condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
 mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
-atom	:	ID | INT | '(' s_expr ')' -> s_expr;
+atom	:	path_expr | INT | '(' s_expr ')' -> s_expr;
+path_expr
+	:	pelmt+=ID ('.' pelmt+=ID)* -> ^(PATH $pelmt);
 
-ns_id	:	(ID '::')? ID;
+ns_id	:	(pr=ID '::')? loc=ID -> ^(NS $pr? $loc);
 
 // In-line XML
 
@@ -205,7 +209,7 @@ EXT_EXPR
 // Basic tokens
 VAR_MODS:	'unique' | 'external' | ('string' | 'int' | 'float');
 SEMI	:	';';
-ID	:	(LETTER | '_' ) (LETTER | DIGIT | '_' )*;
+ID	:	(LETTER | '_' ) (LETTER | DIGIT | '_' | '-' )*;
 INT	:	(DIGIT )+ ;
 STRING	:	'"' ( ESCAPE_SEQ | ~('\\'|'"') )* '"';
 ESCAPE_SEQ

@@ -44,10 +44,13 @@ import org.apache.ode.simpel.ErrorListener;
 
 program	:	declaration+;
 declaration
-	:	process;
+	:	process | namespace;
+
+namespace
+	:	^(NAMESPACE ID STRING);
 
 // Process
-process	:	^(PROCESS ID block) { System.out.println("PROCESS " + $ID.text); };
+process	:	^(PROCESS ^(NS pr=ID? nm=ID) block) { System.out.println("PROCESS " + $nm.text); };
 
 process_stmt
 	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
@@ -79,11 +82,8 @@ until_ex:	^(UNTIL expr block);
 foreach	:	^(FOREACH ID init=expr cond=expr assign block);
 forall	:	^(FORALL ID from=expr to=expr);
 
-try_ex	:	^(TRY block catch_ex* catch_all?);
-catch_all
-	:	^(CATCH_ALL ID block);
-		
-catch_ex:	^(CATCH ID ID block);
+try_ex	:	^(TRY block catch_ex*);
+catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 
 scope_ex:	^(SCOPE ID? block scope_stmt*);
 scope_stmt
@@ -99,7 +99,7 @@ invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
 receive	:	^(RECEIVE ^(ID ID correlation?) param_block?);
 	
-reply	:	^(REPLY ID);
+reply	:	^(REPLY ID (ID ID)?);
 
 assign	:	^(ASSIGN ID rvalue);
 rvalue
@@ -137,7 +137,9 @@ expr	:	s_expr | EXT_EXPR | funct_call;
 
 funct_call
 	:	^(CALL ID*);
-	
+path_expr
+	:	^(PATH ID*);
+
 s_expr	:	^('==' s_expr s_expr) 
 	|	^('!=' s_expr s_expr) 
 	|	^('<' s_expr s_expr) 
@@ -148,4 +150,4 @@ s_expr	:	^('==' s_expr s_expr)
 	|	^('-' s_expr s_expr) 
 	|	^('*' s_expr s_expr) 
 	|	^('/' s_expr s_expr) 
-	|	ID | INT | STRING;
+	|	path_expr | INT | STRING;

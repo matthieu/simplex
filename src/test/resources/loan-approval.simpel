@@ -1,0 +1,30 @@
+namespace lns = "http://example.com/loan-approval/wsdl/";
+namespace pns = "http://example.com/loan-approval";
+
+process pns::LoanApproval {
+  try {
+    parrallel {
+      request = receive(customer, request);
+      signal(receive-to-assess, [$request.amount < 10000]);
+      signal(receive-to-approval, [$request.amount >= 10000]);
+    } and {
+      join(receive-to-assess);
+      risk = invoke(assessor, check);
+      signal(assess-to-setMessage, [$risk.level = 'low']);
+      signal(assess-to-approval, [$risk.level != 'low']);
+    } and {
+      join(assess-to-setMessage);
+      approval.accept = "yes";
+      signal(setMessage-to-reply);
+    } and {
+      join(receive-to-approval, assess-to-approval);
+      invoke(approver, approve);
+      signal(approval-to-reply);
+    } and {
+      join(approval-to-reply, setMessage-to-reply);
+      reply(customer, request, approval);
+    }
+  } catch(lns::loanProcessFault) { |error|
+    reply(customer, request, error);
+  }
+}
