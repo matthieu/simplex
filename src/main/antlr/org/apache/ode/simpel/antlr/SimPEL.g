@@ -107,7 +107,7 @@ pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
 
 // TODO links
-flow	:	'parrallel' b+=body ('and' b+=body)* -> ^(FLOW $b);
+flow	:	'parallel' b+=body ('and' b+=body)* -> ^(FLOW $b);
 signal	:	'signal' '('ID (',' expr)? ')' -> ^(SIGNAL ID expr?);
 join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k expr?);
 

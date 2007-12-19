@@ -178,8 +178,7 @@ process CompactProcess
   while(count < 10)
     receive(p, o) { |m|
       count = count + 1;
-      if (count == 10)
-        invoke(count_partner, count_done);
+      if (count == 10) invoke(count_partner, count_done);
     }
 
 #=============================================================
@@ -251,7 +250,7 @@ process DoubleCorrel {
 
 process BasicFlow {
   orderMsg = receive(my_pl, start_op);
-  parrallel {
+  parallel {
     invoke(partner1_pl, partner1_op, orderMsg);
   } and {
     invoke(partner2_pl, partner2_op, orderMsg);
@@ -264,7 +263,7 @@ process BasicFlow {
 
 process CompactFlow {
   orderMsg = receive(my_pl, start_op);
-  parrallel
+  parallel
     invoke(partner1_pl, partner1_op, orderMsg);
   and
     invoke(partner2_pl, partner2_op, orderMsg);
@@ -276,7 +275,7 @@ process CompactFlow {
 
 process BasicFlow {
   orderMsg = receive(my_pl, start_op);
-  parrallel {
+  parallel {
     invoke(partner1_pl, partner1_op, orderMsg);
     signal(branch1);
   } and {
@@ -294,7 +293,7 @@ process BasicFlow {
 
 process SimilarNames {
   try {
-    parrallel {
+    parallel {
       receive_var = receive(receive_pl, receive_op);
       signal(signal-done, [$foo > 1]);
     }

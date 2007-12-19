@@ -5,7 +5,7 @@ namespace pns = "http://example.com/loan-approval";
 process pns::LoanApproval {
   partnerLink customer, assessor, approver;
   try {
-    parrallel {
+    parallel {
       request = receive(customer, request);
       signal(receive-to-assess, [$request.amount < 10000]);
       signal(receive-to-approval, [$request.amount >= 10000]);

@@ -45,7 +45,7 @@ process Auction {
   invoke(actionRegistrar, processData, auctionData);
   answerData = receive(actionRegistrar, answer, {auctionIdFromAnswer: auctionId});
 
-  parrallel {
+  parallel {
      seller = sellerData.endpointReference;
      sellerAnswerData.thankYouText = "Thank you!";
      invoke(seller, answer, sellerAnswerData);
