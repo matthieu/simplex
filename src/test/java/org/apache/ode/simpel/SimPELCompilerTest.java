@@ -81,22 +81,38 @@ public class SimPELCompilerTest extends TestCase {
     }
 
     public void testLoanApproval() throws Exception {
+        SimPELCompiler c = compiler();
+        c.compileProcess(readProcess("loan-approval.simpel"));
+        reportErrors("Loan approval", c);
+    }
+
+    public void testAuction() throws Exception {
+        SimPELCompiler c = compiler();
+        c.compileProcess(readProcess("auction.simpel"));
+        reportErrors("Auction service", c);
+    }
+
+    private String readProcess(String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(
-                getClass().getClassLoader().getResource("loan-approval.simpel").getFile()));
+                getClass().getClassLoader().getResource(fileName).getFile()));
 
         String line;
         StringBuffer processText = new StringBuffer();
         while ((line = reader.readLine()) != null) processText.append(line).append("\n");
+        return processText.toString();
+    }
 
+    private SimPELCompiler compiler() {
         TestErrorListener l = new TestErrorListener();
         SimPELCompiler comp = new SimPELCompiler();
         comp.setErrorListener(l);
+        return comp;
+    }
 
-        comp.compileProcess(processText.toString());
-
-        if (l.messages.toString().length() > 0) {
-            System.out.println("Loan approval failed to compile:\n");
-            System.out.println(l.messages.toString());
+    private void reportErrors(String testName, SimPELCompiler c) {
+        if (((TestErrorListener)c.getErrorListener()).messages.toString().length() > 0) {
+            System.out.println(testName+" failed to compile:\n");
+            System.out.println(((TestErrorListener)c.getErrorListener()).messages.toString());
             fail("There were failures.");
         }
     }

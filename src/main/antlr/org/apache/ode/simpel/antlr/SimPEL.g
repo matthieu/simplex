@@ -90,51 +90,51 @@ declaration
 	:	funct | process | namespace;
 
 // Process
-process	:	'process' ns_id block -> ^(PROCESS ns_id block);
+process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
-process_stmt
-	:	(pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
+proc_stmt
+	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
 		| receive | ((invoke | reply | assign | throw_ex | wait_ex | exit | signal | join
-		| variables) SEMI!) )+;
+		| variables | partner_link) SEMI!);
 
-namespace
-	:	'namespace' ID '=' STRING SEMI -> ^(NAMESPACE ID STRING);
-
-block	:	'{' process_stmt '}' -> ^(SEQUENCE process_stmt);
+block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
 param_block
-	:	'{' ('|' in+=ID (',' in+=ID)* '|')? process_stmt '}' -> ^($in process_stmt);
-		
+	:	'{' ('|' in+=ID (',' in+=ID)* '|')? proc_stmt+ '}' -> ^(SEQUENCE $in proc_stmt+);
+body	:	block | proc_stmt;
+
 // Structured activities
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
 
 // TODO links
-flow	:	'parrallel' '{' exprs+=process_stmt '}' ('and' '{' exprs+=process_stmt '}')* -> ^(FLOW $exprs);
+flow	:	'parrallel' b+=body ('and' b+=body)* -> ^(FLOW $b);
 signal	:	'signal' '('ID (',' expr)? ')' -> ^(SIGNAL ID expr?);
 join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k expr?);
 
-if_ex	:	'if' '(' expr ')' block
-		('else if' '(' expr ')' block)?
-		('else' block)? -> ^(IF expr block ^(ELSEIF expr block)? ^(ELSE expr block)?);
+//if_ex	:	'if' '(' expr ')' block
+//		('else if' '(' expr ')' block)*
+//		('else' block)? -> ^(IF expr block ^(ELSEIF expr block)* ^(ELSE expr block)?);
 
-while_ex:	'while' '(' expr ')' block -> ^(WHILE expr block);
+if_ex	:	'if' '(' expr ')' ifb=body ('else' eb=body)? -> ^(IF expr $ifb (^(ELSE $eb))?);
 
-until_ex:	'do' block 'until' '(' expr ')' -> ^(UNTIL expr block);
+while_ex:	'while' '(' expr ')' body -> ^(WHILE expr body);
 
-foreach	:	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' block -> ^(FOREACH ID $init $cond assign block);
-forall	:	'forall' '(' ID '=' from=expr 'to' to=expr ')' block -> ^(FORALL ID $from $to block);
+until_ex:	'do' body 'until' '(' expr ')' -> ^(UNTIL expr body);
 
-try_ex	:	'try' tb=block catch_ex* -> ^(TRY $tb catch_ex*);		
+foreach	:	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' body -> ^(FOREACH ID $init $cond assign body);
+forall	:	'forall' '(' ID '=' from=expr 'to' to=expr ')' body -> ^(FORALL ID $from $to body);
+
+try_ex	:	'try' body catch_ex* -> ^(TRY body catch_ex*);		
 catch_ex:	'catch' '(' ns_id ')' param_block -> ^(CATCH ns_id param_block);
 
-scope_ex:	'scope' ('(' ID ')')? block scope_stmt* -> ^(SCOPE ID? block scope_stmt*);
+scope_ex:	'scope' ('(' ID ')')? body scope_stmt* -> ^(SCOPE ID? body scope_stmt*);
 scope_stmt
 	:	event | alarm | compensation;
 
 event	:	'event' '(' p=ID ',' o=ID ')' param_block -> ^(EVENT $p $o param_block);
-alarm	:	'alarm' '(' expr ')' block -> ^(ALARM expr block);
+alarm	:	'alarm' '(' expr ')' body -> ^(ALARM expr body);
 compensation
-	:	'compensation' block -> ^(COMPENSATION block);
+	:	'compensation' body -> ^(COMPENSATION body);
 
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
@@ -161,6 +161,9 @@ exit	:	'exit' -> ^(EXIT);
 
 
 // Others
+namespace
+	:	'namespace' ID '=' STRING SEMI -> ^(NAMESPACE ID STRING);
+		
 variables
 	:	'var'! v+=variable (','! v+=variable)*;
 variable:	ID VAR_MODS* -> ^(VARIABLE ID VAR_MODS*);

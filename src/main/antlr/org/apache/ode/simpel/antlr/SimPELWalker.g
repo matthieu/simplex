@@ -50,49 +50,49 @@ namespace
 	:	^(NAMESPACE ID STRING);
 
 // Process
-process	:	^(PROCESS ^(NS pr=ID? nm=ID) block) { System.out.println("PROCESS " + $nm.text); };
+process	:	^(PROCESS ^(NS pr=ID? nm=ID) body) { System.out.println("PROCESS " + $nm.text); };
 
-process_stmt
-	:	(pick | sequence | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
+proc_stmt
+	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex | exit | signal | join
-		| variable)+;
-		
-block	:	^(SEQUENCE process_stmt);
+		| variable | partner_link;
+block	:	^(SEQUENCE proc_stmt+);
 param_block
-	:	^(ID* process_stmt);
+	:	^(SEQUENCE ID+ proc_stmt+);
+body	:	block | proc_stmt;
+		
 
 // Structured activities
 pick	:	^(PICK receive* timeout*);
 timeout	:	^(TIMEOUT expr block); 
 
-sequence:	^(SEQUENCE block);
-
 // TODO links
-flow	:	^(FLOW process_stmt);
+flow	:	^(FLOW body*);
 signal	:	^(SIGNAL ID expr?);
 join	:	^(JOIN ID* expr?);
 
 
-if_ex	:	^(IF expr block ^(ELSEIF expr block) ^(ELSE expr block));
+//if_ex	:	^(IF expr block (^(ELSEIF expr block))* (^(ELSE expr block))?);
+if_ex	:	^(IF expr body (^(ELSE body))?);
 
-while_ex:	^(WHILE expr block);
+while_ex:	^(WHILE expr body);
 
-until_ex:	^(UNTIL expr block);
+until_ex:	^(UNTIL expr body);
 
-foreach	:	^(FOREACH ID init=expr cond=expr assign block);
-forall	:	^(FORALL ID from=expr to=expr);
+foreach	:	^(FOREACH ID init=expr cond=expr assign body);
+forall	:	^(FORALL ID from=expr to=expr body);
 
-try_ex	:	^(TRY block catch_ex*);
+try_ex	:	^(TRY body catch_ex*);
 catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 
-scope_ex:	^(SCOPE ID? block scope_stmt*);
+scope_ex:	^(SCOPE ID? body scope_stmt*);
 scope_stmt
 	:	event | alarm | compensation;
 
-event	:	^(EVENT ID ID ID param_block);
-alarm	:	^(ALARM expr block);
+event	:	^(EVENT ID ID param_block);
+alarm	:	^(ALARM expr body);
 compensation
-	:	^(COMPENSATION block);
+	:	^(COMPENSATION body);
 
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);

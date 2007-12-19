@@ -46,6 +46,17 @@ process VariableDecl {
 }
 
 #=============================================================
+# Partner links declaration
+#
+
+process ReceiveInvoke {
+  partnerLink my_pl, other_pl;
+
+  msg_in = receive(my_pl, start_op);
+  invoke(other_pl, other_op, msg_in);
+}
+
+#=============================================================
 # Scope with alarm
 #
 
@@ -102,6 +113,20 @@ process ScopeAll {
 }
 
 #=============================================================
+# Compact scope
+#
+
+process ScopeAll {
+  msg_in = receive(my_pl, start_op);
+  scope
+    wait([PT60S]);
+  alarm([PT60S])
+    exit;
+  compensation
+    invoke(pl, op, msg);
+}
+
+#=============================================================
 # Hello World (basic assignment)
 #
 
@@ -144,6 +169,18 @@ process pns::NamespacesProcess {
     invoke(fault_pl, inform_f1, f1);
   }
 }
+
+#=============================================================
+# Compact process
+#
+
+process CompactProcess
+  while(count < 10)
+    receive(p, o) { |m|
+      count = count + 1;
+      if (count == 10)
+        invoke(count_partner, count_done);
+    }
 
 #=============================================================
 # External Counter
@@ -222,6 +259,18 @@ process BasicFlow {
 }
 
 #=============================================================
+# Compact flow
+#
+
+process CompactFlow {
+  orderMsg = receive(my_pl, start_op);
+  parrallel
+    invoke(partner1_pl, partner1_op, orderMsg);
+  and
+    invoke(partner2_pl, partner2_op, orderMsg);
+}
+
+#=============================================================
 # Flow with signals
 #
 
@@ -243,13 +292,38 @@ process BasicFlow {
 # Naming Conflicts
 #
 
-process NamingConflicts {
+process SimilarNames {
   try {
     parrallel {
       receive_var = receive(receive_pl, receive_op);
-      signal(receive_done, [$foo > 1]);
+      signal(signal-done, [$foo > 1]);
     }
-  } catch(foons::Foo) { |foo_var|
-    invoke(pl, op, foo_var);
+  } catch(catchns::Catch) { |catch_var|
+    invoke(invoke_pl, invoke_op, catch_var);
+  }
+}
+
+#=============================================================
+# Different condition combinations
+#
+
+process ConditionsCombo {
+  receive(my_pl, start_op) { |msg_in|
+    if (msg_in.foo) {
+      wait([PT1S]);
+    } else if (msg_in.bar) {
+      wait([PT1S]);
+    } else {
+      wait([PT1S]);
+    }
+
+    if (msg_in.baz) {
+      wait([PT1S]);
+    }
+
+    if (msg_in.baz) wait([PT1S]);
+    else wait([PT1S]);
+
+    reply(msg_in);
   }
 }

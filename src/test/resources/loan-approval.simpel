@@ -1,7 +1,9 @@
 namespace lns = "http://example.com/loan-approval/wsdl/";
 namespace pns = "http://example.com/loan-approval";
 
+# Loan approval process as defined in chapter 15.3 of the BPEL 2.0 specification
 process pns::LoanApproval {
+  partnerLink customer, assessor, approver;
   try {
     parrallel {
       request = receive(customer, request);
