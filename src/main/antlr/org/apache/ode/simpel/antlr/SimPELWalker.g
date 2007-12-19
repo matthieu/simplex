@@ -138,7 +138,8 @@ expr	:	s_expr | EXT_EXPR | funct_call;
 funct_call
 	:	^(CALL ID*);
 path_expr
-	:	^(PATH ID*);
+	:	^(PATH ns_id*);
+ns_id	:	^(NS ID? ID);
 
 s_expr	:	^('==' s_expr s_expr) 
 	|	^('!=' s_expr s_expr) 

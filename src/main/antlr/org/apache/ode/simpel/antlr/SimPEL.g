@@ -189,7 +189,7 @@ aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
 mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
 atom	:	path_expr | INT | '(' s_expr ')' -> s_expr;
 path_expr
-	:	pelmt+=ID ('.' pelmt+=ID)* -> ^(PATH $pelmt);
+	:	pelmt+=ns_id ('.' pelmt+=ns_id)* -> ^(PATH $pelmt);
 
 ns_id	:	(pr=ID '::')? loc=ID -> ^(NS $pr? $loc);
 
