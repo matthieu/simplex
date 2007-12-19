@@ -5,11 +5,11 @@ namespace addr="http://example.com/addressing";
 function auctionIdFromAnswer(answer) {
   answer.auctionId;
 }
-function auctionIdFromBuyer(answer) {
-  answer.auctionId;
+function auctionIdFromBuyer(buyer) {
+  buyer.ID;
 }
-function auctionIdFromSeller(answer) {
-  answer.auctionId;
+function auctionIdFromSeller(seller) {
+  seller.auctionId;
 }
 
 # Auction process as defined in chapter 15.4 of the BPEL 2.0 specification
