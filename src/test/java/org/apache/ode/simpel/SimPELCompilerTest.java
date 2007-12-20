@@ -92,6 +92,12 @@ public class SimPELCompilerTest extends TestCase {
         reportErrors("Auction service", c);
     }
 
+    public void testTaskManager() throws Exception {
+        SimPELCompiler c = compiler();
+        c.compileProcess(readProcess("task-manager.simpel"));
+        reportErrors("Auction service", c);
+    }
+
     private String readProcess(String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(
                 getClass().getClassLoader().getResource(fileName).getFile()));

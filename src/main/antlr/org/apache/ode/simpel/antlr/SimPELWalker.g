@@ -53,7 +53,7 @@ namespace
 process	:	^(PROCESS ^(NS pr=ID? nm=ID) body) { System.out.println("PROCESS " + $nm.text); };
 
 proc_stmt
-	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
+	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variable | partner_link;
 block	:	^(SEQUENCE proc_stmt+);
@@ -94,6 +94,10 @@ alarm	:	^(ALARM expr body);
 compensation
 	:	^(COMPENSATION body);
 
+
+with_ex :       ^(WITH with_map* body);
+with_map:       ^(MAP ID path_expr);
+
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
@@ -105,7 +109,7 @@ assign	:	^(ASSIGN ID rvalue);
 rvalue
 	:	receive | invoke | expr | xmlElement;
 	
-throw_ex:	^(THROW ID);
+throw_ex:	^(THROW ns_id);
 
 wait_ex	:	^(WAIT expr);
 
@@ -123,7 +127,8 @@ corr_mapping
 
 // XML
 xmlElement
-	:	^(XML_ELEMENT XML_NAME xmlAttribute* xmlElementContent*) { System.out.println("ELMT " + $XML_NAME.text); };
+	:	^(XML_EMPTY_ELEMENT XML_NAME xmlAttribute*) | ^(XML_ELEMENT XML_NAME xmlAttribute* xmlElementContent*) 
+                { System.out.println("ELMT " + $XML_NAME.text); };
 xmlAttribute
 	:	^(XML_ATTRIBUTE XML_NAME XML_ATTRIBUTE_VALUE) { System.out.println("ATTR " + $XML_NAME.text); };
 xmlElementContent

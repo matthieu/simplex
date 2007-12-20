@@ -9,7 +9,7 @@ tokens {
     PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
     ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM; 
-    SIGNAL; JOIN;
+    SIGNAL; JOIN; WITH; MAP;
     EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
 }
 @parser::header {
@@ -93,7 +93,7 @@ declaration
 process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
 proc_stmt
-	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex
+	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
 		| receive | ((invoke | reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables | partner_link) SEMI!);
 
@@ -106,14 +106,9 @@ body	:	block | proc_stmt;
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
 
-// TODO links
 flow	:	'parallel' b+=body ('and' b+=body)* -> ^(FLOW $b);
 signal	:	'signal' '('ID (',' expr)? ')' -> ^(SIGNAL ID expr?);
 join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k expr?);
-
-//if_ex	:	'if' '(' expr ')' block
-//		('else if' '(' expr ')' block)*
-//		('else' block)? -> ^(IF expr block ^(ELSEIF expr block)* ^(ELSE expr block)?);
 
 if_ex	:	'if' '(' expr ')' ifb=body ('else' eb=body)? -> ^(IF expr $ifb (^(ELSE $eb))?);
 
@@ -136,6 +131,10 @@ alarm	:	'alarm' '(' expr ')' body -> ^(ALARM expr body);
 compensation
 	:	'compensation' body -> ^(COMPENSATION body);
 
+with_ex :
+                'with' '(' wm+=with_map (',' wm+=with_map)* ')' body -> ^(WITH $wm* body);
+with_map:       ID ':' path_expr -> ^(MAP ID path_expr);
+
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
 
@@ -150,7 +149,7 @@ rvalue
 	:	 receive_base -> ^(RECEIVE receive_base)
 		| invoke | expr | xml_literal;
 	
-throw_ex:	'throw' '('ID')' -> ^(THROW ID);
+throw_ex:	'throw' '('? ns_id ')'? -> ^(THROW ns_id);
 
 wait_ex	:	'wait' '('expr')' -> ^(WAIT expr);
 
@@ -183,6 +182,7 @@ expr	:	s_expr | EXT_EXPR | funct_call;
 
 funct_call
 	:	p+=ID '(' p+=ID* ')' -> ^(CALL ID+);
+// TODO add && || !
 s_expr	:	condExpr;
 condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;

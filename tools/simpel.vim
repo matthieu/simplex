@@ -21,8 +21,8 @@ syn keyword simpelParallel		parallel and
 syn keyword simpelException		try catch throw
 syn keyword simpelBoolean		true false
 syn keyword simpelIdentifier		var partnerLink namespace
-syn keyword simpelReserved		process scope event alarm compensation
-syn keyword simpelStatement		invoke receive reply wait compensate exit join signal
+syn keyword simpelReserved		process scope event alarm compensation pick
+syn keyword simpelStatement		invoke receive reply wait compensate exit join signal with
 
 syn keyword simpelFunction      	function
 syn match   simpelBraces	   	"[{}\[\]]"

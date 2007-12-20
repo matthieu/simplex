@@ -138,6 +138,18 @@ process HelloWorld {
 }
 
 #=============================================================
+# Forced Hello World (if and throw)
+#
+
+process HelloWorld {
+  receive(my_pl, hello_op) { |msg_in|
+    if (msg_in != "Hello ") throw(WrongMsg);
+    msg_out = msg_in + " World";
+    reply(msg_out);
+  }
+}
+
+#=============================================================
 # Try / catch / catch all
 #
 
@@ -164,6 +176,7 @@ namespace fns = "ns:fault";
 process pns::NamespacesProcess {
   msg_in = receive(my_pl, start_op);
   try {
+    msg_in.payload.mns::foo = msg_in.payload.mns::foo + " bar";
     invoke(other_pl, other_op, msg_in);
   } catch(fns::SomeFault) { |f1|
     invoke(fault_pl, inform_f1, f1);
@@ -324,5 +337,17 @@ process ConditionsCombo {
     else wait([PT1S]);
 
     reply(msg_in);
+  }
+}
+
+#=============================================================
+# With
+#
+
+process WithTest {
+  foo = receive(my_pl, start_op);
+  with(bz1: foo.bar.baz1, bz2: foo.bar.baz2) {
+    bz1.name = bz2.name;
+    bz1.address = bz2.address;
   }
 }
