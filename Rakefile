@@ -23,7 +23,7 @@ require "buildr/antlr"
 VERSION_NUMBER = "1.2-SNAPSHOT"
 NEXT_VERSION = "1.2"
 
-ANTLR               = "org.antlr:antlr:jar:3.0"
+ANTLR               = "org.antlr:antlr:jar:3.0.1"
 
 repositories.remote << "http://repo1.maven.org/maven2"
 
@@ -39,6 +39,7 @@ define "simpel" do
 
   pkg_name = "org.apache.ode.simpel.antlr"
   compile.from antlr(_("src/main/antlr"), {:in_package=>pkg_name, :token=>pkg_name})
-  compile.with file(_("lib/e4x-grammar-0.1.jar")), ANTLR
+  compile.with file(_("lib/e4x-grammar-0.1.jar")), file(_("lib/antlr-20071220.jar"))
+  #compile.with file(_("lib/e4x-grammar-0.1.jar")), ANTLR
   package :jar
 end
