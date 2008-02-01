@@ -6,7 +6,7 @@ options {
     ASTLabelType=LinkedListTree;
 }
 tokens {
-    PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
+    ROOT; PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
     ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM; 
     SIGNAL; JOIN; WITH; MAP;
@@ -85,7 +85,7 @@ import org.apache.ode.simpel.ErrorListener;
 
 // MAIN BPEL SYNTAX
 
-program	:	declaration+;
+program	:	declaration+ -> ^(ROOT declaration+);
 declaration
 	:	funct | process | namespace;
 

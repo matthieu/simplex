@@ -4,6 +4,7 @@ import org.antlr.runtime.ANTLRReaderStream;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeParser;
+import org.apache.ode.bpel.o.OProcess;
 import org.apache.ode.simpel.antlr.SimPELLexer;
 import org.apache.ode.simpel.antlr.SimPELParser;
 import org.apache.ode.simpel.antlr.SimPELWalker;
@@ -27,7 +28,7 @@ public class SimPELCompiler {
         this.el = el;
     }
 
-    public void compileProcess(String process) throws Exception {
+    public OProcess compileProcess(String process) throws Exception {
         ANTLRReaderStream charstream = new ANTLRReaderStream(new StringReader(process));
         ErrorListener errListener = (el == null ? new DefaultErrorListener() : el);
 
@@ -55,11 +56,13 @@ public class SimPELCompiler {
             walker.setErrorListener(el);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
             rewriteTokens(tokenMapping, E4XParser.tokenNames, (LinkedListTree) t, walker, false);
-//            System.out.println("\n"+t.toStringTree()); // print out the tree
 
             nodes.setTokenStream(tokenStream);
             walker.program();
+
+            return walker.getBuilder().getProcess();
         }
+        return null;
     }
 
     private void handleFunctions(Tree t) {

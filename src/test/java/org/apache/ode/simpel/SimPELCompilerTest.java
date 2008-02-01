@@ -2,10 +2,10 @@ package org.apache.ode.simpel;
 
 import junit.framework.TestCase;
 import org.antlr.runtime.RecognitionException;
+import org.apache.ode.bpel.o.OProcess;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.LinkedList;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
@@ -39,11 +39,13 @@ public class SimPELCompilerTest extends TestCase {
         while ((line = reader.readLine()) != null) {
             if (line.trim().startsWith("#=")) {
                 // Found next test case divider, process is complete so we can parse
-                comp.compileProcess(processBody.toString());
+                OProcess oprocess = comp.compileProcess(processBody.toString());
                 if (l.messages.toString().length() > 0) {
                     // Shit happened
                     allErrors.append("Test case ").append(testCaseName).append(" failed!!\n");
                     allErrors.append(l.messages.toString()).append("\n");
+                } else {
+                    System.out.println(oprocess);
                 }
                 testCount++;
 
@@ -96,6 +98,19 @@ public class SimPELCompilerTest extends TestCase {
         SimPELCompiler c = compiler();
         c.compileProcess(readProcess("task-manager.simpel"));
         reportErrors("Auction service", c);
+    }
+
+    public void testHelloWorldComplete() throws Exception {
+        String process =
+                "process HelloWorld {\n" +
+                "  receive(my_pl, hello_op) { |msg_in|\n" +
+                "    msg_out = msg_in + \" World\";\n" +
+                "    reply(msg_out);\n" +
+                "  }\n" +
+                "}";
+        SimPELCompiler c = compiler();
+        OProcess oprocess = c.compileProcess(process);
+        reportErrors("Hello World", c);
     }
 
     private String readProcess(String fileName) throws Exception {
