@@ -2,7 +2,11 @@ package org.apache.ode.simpel;
 
 import junit.framework.TestCase;
 import org.antlr.runtime.RecognitionException;
+import org.apache.ode.EmbeddedServer;
 import org.apache.ode.bpel.o.OProcess;
+import org.apache.ode.utils.DOMUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -108,9 +112,16 @@ public class SimPELCompilerTest extends TestCase {
                 "    reply(msg_out);\n" +
                 "  }\n" +
                 "}";
-        SimPELCompiler c = compiler();
-        OProcess oprocess = c.compileProcess(process);
-        reportErrors("Hello World", c);
+
+        EmbeddedServer server = new  EmbeddedServer();
+        server.start();
+        server.deploy(process);
+
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElement("wrapper");
+        wrapper.setTextContent("Hello");
+
+        Element result = server.sendMessage("my_pl", "hello_op", wrapper);
     }
 
     private String readProcess(String fileName) throws Exception {

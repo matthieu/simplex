@@ -8,8 +8,8 @@ tokens {
     XML_ELEMENT; XML_ATTRIBUTE; XML_NAME; XML_ATTRIBUTE_VALUE; XML_TEXT; XML_WS; XML_COMMENT; XML_CDATA; XML_PI;
 }
 scope BPELScope { OScope oscope; }
-scope Block { OActivity blockActivity; }
-scope Parent { OActivity activity; }
+scope Parent { OBuilder.StructuredActivity activity; }
+scope ReceiveBlock { OPickReceive receive; }
 
 @header {
 package org.apache.ode.simpel.antlr;
@@ -73,11 +73,12 @@ namespace
 // Process
 process
 scope BPELScope Parent;
-	:	^(PROCESS ^(NS pr=ID? nm=ID) body) 
-		{ OScope scope = builder.buildProcess(text($pr), text($nm));
-		  $BPELScope::oscope = scope; 
+	:	^(PROCESS ^(NS pr=ID? nm=ID) 
+		{ OBuilder.StructuredActivity<OScope> scope = builder.buildProcess(text($pr), text($nm));
+		  $BPELScope::oscope = scope.getOActivity(); 
 		  $Parent::activity = scope;
-		};
+		} 
+		body);
 
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
@@ -85,59 +86,54 @@ proc_stmt
 		| variable | partner_link;
 block
 scope Parent;
-	:	^(SEQUENCE proc_stmt+) 
-		{ OSequence seq = builder.buildSequence($Parent[-1]::activity); 
+	:	^(SEQUENCE 
+		{ OBuilder.StructuredActivity seq = builder.build(OSequence.class, $BPELScope::oscope, $Parent[-1]::activity); 
 		  $Parent::activity = seq;
-		};
+		}
+		proc_stmt+);
 param_block
 scope Parent;
-	:	^(SEQUENCE ID+ proc_stmt+) 
-		{ OSequence seq = builder.buildSequence($Parent[-1]::activity); 
+	:	^(SEQUENCE ID+
+		{ OBuilder.StructuredActivity seq = builder.build(OSequence.class, $BPELScope::oscope, $Parent[-1]::activity); 
 		  $Parent::activity = seq;
-		  builder.setBlockParam($Block::blockActivity, $ID.text); 
-		};
+		  builder.setBlockParam($BPELScope::oscope, (OActivity) $Parent[-1]::activity.getOActivity(), $ID.text); 
+		}
+		proc_stmt+);
 body	:	block | proc_stmt;
 		
 
 // Structured activities
 pick	
-scope Parent;
 	:	^(PICK receive* timeout*);
 timeout	:	^(TIMEOUT expr block); 
 
 // TODO links
 flow	
-scope Parent;
 	:	^(FLOW body*);
 signal	:	^(SIGNAL ID expr?);
 join	:	^(JOIN ID* expr?);
 
 if_ex	
-scope Parent;
 	:	^(IF expr body (^(ELSE body))?);
 
 while_ex
-scope Parent;
 	:	^(WHILE expr body);
 
 until_ex
-scope Parent;
 	:	^(UNTIL expr body);
 
 foreach	
-scope Parent;
 	:	^(FOREACH ID init=expr cond=expr assign body);
 forall	
-scope Parent;
 	:	^(FORALL ID from=expr to=expr body);
 
 try_ex
-scope BPELScope Parent;
+scope BPELScope;
 	:	^(TRY body catch_ex*);
 catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 
 scope_ex
-scope BPELScope Parent;
+scope BPELScope;
 	:	^(SCOPE ID? body scope_stmt*);
 scope_stmt
 	:	event | alarm | compensation;
@@ -148,7 +144,6 @@ compensation
 	:	^(COMPENSATION body);
 
 with_ex 
-scope Parent;
 	:       ^(WITH with_map* body);
 with_map:       ^(MAP ID path_expr);
 
@@ -156,20 +151,21 @@ with_map:       ^(MAP ID path_expr);
 invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
 
-reply	:	^(REPLY ID (ID ID)?);
+reply	:	^(REPLY msg=ID (pl=ID var=ID)?) 
+		{ builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
+			$ReceiveBlock::receive, text($msg), text($pl), text($var)); };
 receive	
-scope Block;
-scope Parent;
-	:	^(RECEIVE ^(p=ID o=ID correlation?) (prb=(param_block))?) 
-		{ OPickReceive rec = builder.buildReceive($Parent[-1]::activity, text($p), text($o)); 
-		  if ($prb != null) {
-		      $Parent::activity = rec;
-		      $Block::blockActivity = rec;
-		   }	  
-		};
+scope ReceiveBlock;
+	:	^(RECEIVE ^(p=ID o=ID correlation?))
+		{ 
+                  OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope, 
+                      $Parent::activity, text($p), text($o)); 
+		  $ReceiveBlock::receive = rec.getOActivity();
+		}
+		(prb=(param_block))?;
 	
 
-assign	:	^(ASSIGN ID rvalue);
+assign	:	^(ASSIGN ID rv=(rvalue)) { builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, text($ID), text($rv)); };
 rvalue
 	:	receive | invoke | expr | xmlElement;
 	

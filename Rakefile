@@ -24,11 +24,32 @@ VERSION_NUMBER = "1.2-SNAPSHOT"
 NEXT_VERSION = "1.2"
 
 ANTLR   = "org.antlr:antlr:jar:3.0.1"
-ODE     = ["org.apache.ode:ode-bpel-compiler:jar:1.2-SNAPSHOT",
-            "org.apache.ode:ode-bpel-obj:jar:1.2-SNAPSHOT",
-            "org.apache.ode:ode-utils:jar:1.2-SNAPSHOT"]
-WSDL4J  = "wsdl4j:wsdl4j:jar:1.6.2"
+COMMONS             = struct(
+  :logging          =>"commons-logging:commons-logging:jar:1.1",
+  :lang             =>"commons-lang:commons-lang:jar:2.1"
+)
+GERONIMO            = struct(
+  :kernel           =>"org.apache.geronimo.modules:geronimo-kernel:jar:2.0.1",
+  :transaction      =>"org.apache.geronimo.components:geronimo-transaction:jar:2.0.1",
+  :connector        =>"org.apache.geronimo.components:geronimo-connector:jar:2.0.1"
+)
+HSQLDB              = "hsqldb:hsqldb:jar:1.8.0.7"
+JAVAX               = struct(
+  :transaction      =>"org.apache.geronimo.specs:geronimo-jta_1.1_spec:jar:1.1",
+  :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0"
+)
 LOG4J  = "log4j:log4j:jar:1.2.15"
+ODE     = ["org.apache.ode:ode-bpel-api:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-bpel-compiler:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-bpel-dao:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-bpel-obj:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-bpel-runtime:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-il-common:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-jacob:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-scheduler-simple:jar:1.2-SNAPSHOT",
+           "org.apache.ode:ode-utils:jar:1.2-SNAPSHOT"]
+WSDL4J  = "wsdl4j:wsdl4j:jar:1.6.2"
+XERCES              = "xerces:xercesImpl:jar:2.9.0"
 
 repositories.remote << "http://repo1.maven.org/maven2"
 
@@ -44,6 +65,8 @@ define "simpel" do
 
   pkg_name = "org.apache.ode.simpel.antlr"
   compile.from antlr(_("src/main/antlr"), {:in_package=>pkg_name, :token=>pkg_name})
-  compile.with ODE, LOG4J, WSDL4J, file(_("lib/e4x-grammar-0.1.jar")), file(_("lib/antlr-20071220.jar"))
+  compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging, ODE, LOG4J, 
+    WSDL4J, GERONIMO.transaction, XERCES,
+    file(_("lib/e4x-grammar-0.1.jar")), file(_("lib/antlr-20071220.jar"))
   package :jar
 end

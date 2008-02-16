@@ -4,16 +4,18 @@ import org.apache.log4j.Logger;
 import org.apache.ode.bpel.compiler.BaseCompiler;
 import org.apache.ode.bpel.compiler.bom.Bpel20QNames;
 import org.apache.ode.bpel.o.*;
+import org.apache.ode.simpel.wsdl.SimPELInput;
+import org.apache.ode.simpel.wsdl.SimPELOperation;
+import org.apache.ode.simpel.wsdl.SimPELOutput;
+import org.apache.ode.simpel.wsdl.SimPELPortType;
 import org.apache.ode.utils.GUID;
-import org.w3c.dom.Element;
 
-import javax.wsdl.*;
-import javax.wsdl.extensions.ExtensibilityElement;
+import javax.wsdl.PortType;
 import javax.xml.namespace.QName;
+import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.LinkedList;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
@@ -24,28 +26,72 @@ public class OBuilder extends BaseCompiler {
 
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String,OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
-    private boolean firstReceive = false;
+    private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
+    private boolean firstReceive = true;
 
-    public OScope buildProcess(String prefix, String name) {
+
+    public StructuredActivity build(Class oclass, OScope oscope, StructuredActivity parent, Object... params) {
+        try {
+            OActivity oactivity = (OActivity) oclass
+                    .getConstructor(OProcess.class, OActivity.class).newInstance(_oprocess, parent.getOActivity());
+            Method buildMethod = null;
+            for (Method method : OBuilder.class.getMethods())
+                if (method.getName().equals("build" + oclass.getSimpleName().substring(1))) buildMethod = method;
+
+            if (buildMethod == null) throw new RuntimeException("No builder for class " + oclass.getSimpleName());
+
+            Object[] buildParams = new Object[params.length + 2];
+            System.arraycopy(params, 0, buildParams, 2, params.length);
+            buildParams[0] = oactivity;
+            buildParams[1] = oscope;
+            StructuredActivity result = (StructuredActivity) buildMethod.invoke(this, buildParams);
+            parent.run((OActivity) result.getOActivity());
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Couldn't build activity of type " + oclass, e);
+        }
+    }
+
+    public static abstract class StructuredActivity<T> {
+        private T _oact;
+        public StructuredActivity(T oact) {
+            _oact = oact;
+        }
+        public T getOActivity() {
+            return _oact;
+        }
+        public abstract void run(OActivity child);
+    }
+    public static class SimpleActivity<T> extends StructuredActivity<T> {
+        public SimpleActivity(T oact) {
+            super(oact);
+        }
+        public void run(OActivity child) { /* Do nothing */ }
+    }
+
+    public StructuredActivity<OScope> buildProcess(String prefix, String name) {
         _oprocess = new OProcess(Bpel20QNames.NS_WSBPEL2_0_FINAL_EXEC);
+        _oprocess.processName = name;
         _oprocess.guid = new GUID().toString();
         _oprocess.constants = makeConstants();
         _oprocess.compileDate = new Date();
         if (namespaces.get(prefix) == null) _oprocess.targetNamespace = SIMPEL_NS;
         else _oprocess.targetNamespace = namespaces.get(prefix);
 
-        OScope processScope = new OScope(_oprocess, null);
+        final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
         _oprocess.procesScope = processScope;
-        return processScope;
+        return new StructuredActivity<OScope>(processScope) {
+            public void run(OActivity child) {
+                processScope.activity = child;
+            }
+        };
     }
 
-    public OPickReceive buildReceive(OActivity parent, String partnerLink, String operation) {
-        OPickReceive receive = new OPickReceive(_oprocess, parent);
-
+    public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLink, String operation) {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
-        onMessage.partnerLink = resolvePartnerLink(partnerLink);
-        onMessage.operation = new SimPELOperation(operation);
+        onMessage.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true);
+        onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
 
         if (firstReceive) {
             firstReceive = false;
@@ -56,33 +102,104 @@ public class OBuilder extends BaseCompiler {
         onMessage.activity = new OEmpty(_oprocess, receive);
         receive.onMessages.add(onMessage);
 
-        return receive;
+        return new SimpleActivity<OPickReceive>(receive);
     }
 
-    public OSequence buildSequence(OActivity parent) {
-        OSequence seq = new OSequence(_oprocess, parent);
-        return seq;
+    public StructuredActivity buildSequence(final OSequence seq, OScope oscope) {
+        return new StructuredActivity<OSequence>(seq) {
+            public void run(OActivity child) {
+                seq.sequence.add(child);
+            }
+        };
     }
 
-    public void setBlockParam(OActivity blockActivity, String varName) {
-        if (blockActivity == null) {
-            __log.warn("Can't set block parameter on activity null.");
+    public SimpleActivity buildAssign(OAssign oassign, OScope oscope, String lexpr, String rexpr) {
+        OAssign.Copy ocopy = new OAssign.Copy(_oprocess);
+        oassign.operations.add(ocopy);
+
+        OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
+        vref.variable = resolveVariable(oscope, lexpr);
+        ocopy.to = vref;
+
+        ocopy.from = new OAssign.Expression(_oprocess, new SimPELExpression(_oprocess, rexpr)); 
+        return new SimpleActivity<OAssign>(oassign);
+    }
+
+    public SimpleActivity buildReply(OReply oreply, OScope oscope, OPickReceive oreceive,
+                             String var, String partnerLink, String operation) {
+        oreply.variable = resolveVariable(oscope, var);
+        if (partnerLink == null) {
+            if (oreceive == null) throw new RuntimeException("No parent receive but reply with var " + var +
+                    " has no partnerLink/operation information.");
+            oreply.partnerLink = oreceive.onMessages.get(0).partnerLink;
+            oreply.operation = oreceive.onMessages.get(0).operation;
+        } else {
+            oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true);
+            oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null); 
+        }
+        oreply.operation.setOutput(new SimPELOutput("out"));
+        return new SimpleActivity<OReply>(oreply);
+    }
+
+    public void setBlockParam(OScope oscope, OActivity blockActivity, String varName) {
+        // The AST for block activities is something like:
+        //    (SEQUENCE (activity) (SEQUENCE varIds otherActivities))
+        // The parent here is the first sequence so we just set the varIds on its first child activity
+        if (blockActivity == null || !(blockActivity instanceof OSequence)) {
+            __log.warn("Can't set block parameter with block parent activity " + blockActivity);
             return;
         }
-        if (blockActivity instanceof OPickReceive) {
-            ((OPickReceive)blockActivity).onMessages.get(0).variable = new OScope.Variable(_oprocess, null);
-        } else throw new RuntimeException("Can't set block parameter on activity " + blockActivity);
+        OActivity oact = ((OSequence)blockActivity).sequence.get(0);
+        if (oact instanceof OPickReceive) {
+            ((OPickReceive)oact).onMessages.get(0).variable = resolveVariable(oscope, varName);
+        } else __log.warn("Can't set block parameter on activity " + oact);
     }
 
     public OProcess getProcess() {
         return _oprocess;
     }
 
-    private OPartnerLink resolvePartnerLink(String name) {
+    private OPartnerLink buildPartnerLink(OScope oscope, String name, String operation, boolean myRole) {
+        // TODO Handle partnerlinks declared with an associated endpoint
         OPartnerLink resolved = partnerLinks.get(name);
+        // TODO this will not work in case of variable name conflicts in different scopes
         if (resolved == null) {
             resolved = new OPartnerLink(_oprocess);
             resolved.name = name;
+            resolved.declaringScope = oscope;
+            partnerLinks.put(name, resolved);
+            _oprocess.allPartnerLinks.add(resolved);
+        }
+        if (myRole) {
+            PortType pt = resolved.myRolePortType;
+            if (pt == null) pt = resolved.myRolePortType = new SimPELPortType();
+            SimPELOperation op = new SimPELOperation(operation);
+            op.setInput(new SimPELInput("in"));
+            pt.addOperation(op);
+        } else {
+            PortType pt = resolved.partnerRolePortType;
+            if (pt == null) pt = resolved.partnerRolePortType = new SimPELPortType();
+            SimPELOperation op = new SimPELOperation(operation);
+            op.setInput(new SimPELInput("in"));
+            pt.addOperation(op);
+        }
+        return resolved;
+    }
+
+    private OScope.Variable resolveVariable(OScope oscope, String name) {
+        OScope.Variable resolved = variables.get(name);
+        // TODO this will not work in case of variable name conflicts in different scopes
+        if (resolved == null) {
+            LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
+
+            parts.add(new OMessageVarType.Part(_oprocess, "payload",
+                    new OElementVarType(_oprocess, new QName("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper"))));
+            OMessageVarType omsgType = new OMessageVarType(_oprocess,
+                    new QName("http://ode.apache.org/simpel/1.0/definition", "simpelMessage"), parts);
+            resolved = new OScope.Variable(_oprocess, omsgType);
+            resolved.name = name;
+            resolved.declaringScope = oscope;
+            variables.put(name, resolved);
         }
         return resolved;
     }
@@ -91,111 +208,4 @@ public class OBuilder extends BaseCompiler {
         return "http://ode.apache.org/simpel/1.0";
     }
 
-    public class SimPELOperation implements Operation {
-        private String name;
-
-        public SimPELOperation(String name) {
-            this.name = name;
-        }
-
-        public void setName(String s) {
-            this.name = s;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setInput(Input input) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Input getInput() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void setOutput(Output output) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Output getOutput() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void addFault(Fault fault) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Fault getFault(String s) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Fault removeFault(String s) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Map getFaults() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void setStyle(OperationType operationType) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public OperationType getStyle() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void setParameterOrdering(List list) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public List getParameterOrdering() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void setUndefined(boolean b) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public boolean isUndefined() {
-            return false;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void setDocumentationElement(Element element) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Element getDocumentationElement() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void setExtensionAttribute(QName qName, Object o) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Object getExtensionAttribute(QName qName) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Map getExtensionAttributes() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public List getNativeAttributeNames() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public void addExtensibilityElement(ExtensibilityElement extensibilityElement) {
-            //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public ExtensibilityElement removeExtensibilityElement(ExtensibilityElement extensibilityElement) {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public List getExtensibilityElements() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-    }
 }

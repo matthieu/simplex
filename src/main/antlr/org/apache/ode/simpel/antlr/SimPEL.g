@@ -138,7 +138,10 @@ with_map:       ID ':' path_expr -> ^(MAP ID path_expr);
 // Simple activities
 invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
 
-receive	:	receive_base (param_block | SEMI) -> ^(RECEIVE receive_base param_block?);
+receive	
+options {backtrack=true;}
+        :	receive_base SEMI -> ^(RECEIVE receive_base) |
+                receive_base param_block -> ^(RECEIVE receive_base) param_block;
 receive_base
 	:	'receive' '(' p=ID ',' o=ID (',' correlation)? ')' -> ^($p $o correlation?);
 

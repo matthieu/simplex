@@ -1,6 +1,7 @@
 package org.apache.ode.simpel;
 
 import org.antlr.runtime.ANTLRReaderStream;
+import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeParser;
@@ -12,6 +13,7 @@ import org.apache.ode.simpel.util.DefaultErrorListener;
 import uk.co.badgersinfoil.e4x.antlr.*;
 
 import java.io.StringReader;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,8 +30,13 @@ public class SimPELCompiler {
         this.el = el;
     }
 
-    public OProcess compileProcess(String process) throws Exception {
-        ANTLRReaderStream charstream = new ANTLRReaderStream(new StringReader(process));
+    public OProcess compileProcess(String process) {
+        ANTLRReaderStream charstream = null;
+        try {
+            charstream = new ANTLRReaderStream(new StringReader(process));
+        } catch (IOException e) {
+            throw new CompilationException("Unable to read process string.", e);
+        }
         ErrorListener errListener = (el == null ? new DefaultErrorListener() : el);
 
         SimPELLexer lexer = new SimPELLexer(charstream);
@@ -42,7 +49,12 @@ public class SimPELCompiler {
         parser.setInput(lexer, charstream);
         parser.setErrorListener(errListener);
 
-        SimPELParser.program_return result = parser.program();
+        SimPELParser.program_return result = null;
+        try {
+            result = parser.program();
+        } catch (RecognitionException e) {
+            throw new CompilationException(e);
+        }
         // pull out the tree and cast it
         Tree t = (Tree)result.getTree();
 
@@ -53,13 +65,16 @@ public class SimPELCompiler {
             // Pass the tree to the walker for compilation
             CommonTreeNodeStream nodes = new CommonTreeNodeStream(t);
             SimPELWalker walker = new SimPELWalker(nodes);
-            walker.setErrorListener(el);
+            walker.setErrorListener(errListener);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
             rewriteTokens(tokenMapping, E4XParser.tokenNames, (LinkedListTree) t, walker, false);
 
             nodes.setTokenStream(tokenStream);
-            walker.program();
-
+            try {
+                walker.program();
+            } catch (RecognitionException e) {
+                throw new CompilationException(e);
+            }
             return walker.getBuilder().getProcess();
         }
         return null;
