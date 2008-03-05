@@ -2,6 +2,7 @@ package org.apache.ode.embed;
 
 import org.apache.ode.bpel.iapi.*;
 import org.apache.ode.il.epr.WSDL11Endpoint;
+import org.apache.ode.il.epr.URLEndpoint;
 import org.apache.ode.utils.DOMUtils;
 import org.apache.ode.utils.Namespaces;
 import org.w3c.dom.Document;
@@ -36,6 +37,16 @@ public class BindingContextImpl implements BindingContext {
     }
 
     public PartnerRoleChannel createPartnerRoleChannel(QName qName, PortType portType, Endpoint endpoint) {
-        throw new UnsupportedOperationException();
+        // TODO implement me
+        return new PartnerRoleChannelImpl();
+    }
+
+    private class PartnerRoleChannelImpl implements PartnerRoleChannel {
+        public EndpointReference getInitialEndpointReference() {
+            return new URLEndpoint();
+        }
+
+        public void close() {
+        }
     }
 }

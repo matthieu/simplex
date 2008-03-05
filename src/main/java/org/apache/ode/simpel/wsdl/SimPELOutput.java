@@ -8,6 +8,8 @@ import javax.wsdl.Message;
  */
 public class SimPELOutput extends SimPELWSDLElement implements Output {
     private String name;
+    private SimPELMessage _message = new SimPELMessage();
+
     public SimPELOutput(String name) {
         this.name = name;
     }
@@ -20,6 +22,6 @@ public class SimPELOutput extends SimPELWSDLElement implements Output {
     public void setMessage(Message message) {
     }
     public Message getMessage() {
-        return null;
+        return _message;
     }
 }

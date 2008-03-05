@@ -24,11 +24,17 @@ public class OBuilder extends BaseCompiler {
     private static final Logger __log = Logger.getLogger(OBuilder.class);
     private static final String SIMPEL_NS = "http://ode.apache.org/simpel/1.0/definition";
 
+    private OExpressionLanguage _exprLang;
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String,OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
     private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
     private boolean firstReceive = true;
 
+    public OBuilder() {
+        HashMap<String, String> exprRuntime = new HashMap<String, String>();
+        exprRuntime.put("runtime-class", "org.apache.ode.simpel.expr.SimPELExprRuntime");
+        _exprLang = new OExpressionLanguage(_oprocess, exprRuntime);
+    }
 
     public StructuredActivity build(Class oclass, OScope oscope, StructuredActivity parent, Object... params) {
         try {
@@ -45,7 +51,7 @@ public class OBuilder extends BaseCompiler {
             buildParams[0] = oactivity;
             buildParams[1] = oscope;
             StructuredActivity result = (StructuredActivity) buildMethod.invoke(this, buildParams);
-            parent.run((OActivity) result.getOActivity());
+            if (result != null) parent.run((OActivity) result.getOActivity());
             return result;
         } catch (Exception e) {
             throw new RuntimeException("Couldn't build activity of type " + oclass, e);
@@ -77,6 +83,8 @@ public class OBuilder extends BaseCompiler {
         _oprocess.compileDate = new Date();
         if (namespaces.get(prefix) == null) _oprocess.targetNamespace = SIMPEL_NS;
         else _oprocess.targetNamespace = namespaces.get(prefix);
+
+        _oprocess.expressionLanguages.add(_exprLang);
 
         final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
@@ -113,15 +121,19 @@ public class OBuilder extends BaseCompiler {
         };
     }
 
-    public SimpleActivity buildAssign(OAssign oassign, OScope oscope, String lexpr, String rexpr) {
+    public SimpleActivity buildAssign(OAssign oassign, OScope oscope, String lexpr, SimPELExpr rexpr) {
         OAssign.Copy ocopy = new OAssign.Copy(_oprocess);
         oassign.operations.add(ocopy);
 
+        // TODO lvalue should also be an expression
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
         vref.variable = resolveVariable(oscope, lexpr);
+        vref.part = new OMessageVarType.Part(_oprocess, "payload",
+                new OElementVarType(_oprocess, new QName("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper")));
         ocopy.to = vref;
 
-        ocopy.from = new OAssign.Expression(_oprocess, new SimPELExpression(_oprocess, rexpr)); 
+        rexpr.expressionLanguage = _exprLang;
+        ocopy.from = new OAssign.Expression(_oprocess, rexpr);
         return new SimpleActivity<OAssign>(oassign);
     }
 
@@ -137,6 +149,8 @@ public class OBuilder extends BaseCompiler {
             oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true);
             oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null); 
         }
+        // Adding partner role
+        buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), false);
         oreply.operation.setOutput(new SimPELOutput("out"));
         return new SimpleActivity<OReply>(oreply);
     }
@@ -155,6 +169,15 @@ public class OBuilder extends BaseCompiler {
         } else __log.warn("Can't set block parameter on activity " + oact);
     }
 
+    public void addExprVariable(OScope oscope, SimPELExpr expr, String varName) {
+        if (expr == null) {
+            // TODO Temporary plug until all activities are implemented
+            __log.warn("Skipping expression building, null expr");
+            return;
+        }
+        expr.addVariable(resolveVariable(oscope, varName));
+    }
+
     public OProcess getProcess() {
         return _oprocess;
     }
@@ -169,6 +192,7 @@ public class OBuilder extends BaseCompiler {
             resolved.declaringScope = oscope;
             partnerLinks.put(name, resolved);
             _oprocess.allPartnerLinks.add(resolved);
+            oscope.partnerLinks.put(name, resolved);
         }
         if (myRole) {
             PortType pt = resolved.myRolePortType;
@@ -180,7 +204,7 @@ public class OBuilder extends BaseCompiler {
             PortType pt = resolved.partnerRolePortType;
             if (pt == null) pt = resolved.partnerRolePortType = new SimPELPortType();
             SimPELOperation op = new SimPELOperation(operation);
-            op.setInput(new SimPELInput("in"));
+            op.setOutput(new SimPELOutput("out"));
             pt.addOperation(op);
         }
         return resolved;

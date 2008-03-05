@@ -10,12 +10,15 @@ tokens {
 scope BPELScope { OScope oscope; }
 scope Parent { OBuilder.StructuredActivity activity; }
 scope ReceiveBlock { OPickReceive receive; }
+scope ExprContext { SimPELExpr expr; }
 
 @header {
 package org.apache.ode.simpel.antlr;
 import uk.co.badgersinfoil.e4x.antlr.LinkedListTree;
+import uk.co.badgersinfoil.e4x.antlr.LinkedListToken;
 import org.apache.ode.simpel.ErrorListener;
 import org.apache.ode.simpel.omodel.OBuilder;
+import org.apache.ode.simpel.omodel.SimPELExpr;
 import org.apache.ode.bpel.o.*;
 }
 
@@ -59,6 +62,16 @@ import org.apache.ode.bpel.o.*;
     private String text(org.antlr.runtime.tree.Tree t) {
     	if (t == null) return null;
     	else return t.getText();
+    }
+
+    private String deepText(org.antlr.runtime.tree.Tree t) {
+    	LinkedListTree llt = ((LinkedListTree)t);
+    	StringBuffer b = new StringBuffer();
+    	LinkedListToken tok = ((LinkedListTree)t).getStartToken();
+    	b.append(tok.getText());
+    	while(tok != llt.getStopToken() && (tok = tok.getNext()) != null)
+	    if (tok.getText() != null) b.append(tok.getText());
+        return b.toString();
     }
 
 }
@@ -165,9 +178,20 @@ scope ReceiveBlock;
 		(prb=(param_block))?;
 	
 
-assign	:	^(ASSIGN ID rv=(rvalue)) { builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, text($ID), text($rv)); };
-rvalue
-	:	receive | invoke | expr | xmlElement;
+assign	
+scope ExprContext;
+	:	^(ASSIGN 
+                {
+                  $ExprContext::expr = new SimPELExpr(builder.getProcess());
+                }
+                lv=(path_expr) rv=(rvalue)) 
+                {
+                  $ExprContext::expr.setExpr(deepText($rv));
+		  OBuilder.StructuredActivity<OAssign> assign = builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, deepText($lv), $ExprContext::expr);
+                  // The long, winding road of abstraction
+                  $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.getOActivity().operations.get(0)).from).expression;
+                };
+rvalue	:	receive | invoke | expr | xmlElement;
 	
 throw_ex:	^(THROW ns_id);
 
@@ -203,7 +227,7 @@ expr	:	s_expr | EXT_EXPR | funct_call;
 funct_call
 	:	^(CALL ID*);
 path_expr
-	:	^(PATH ns_id*);
+	:	^(PATH ids=(ns_id*)) { builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, deepText($ids)); };
 ns_id	:	^(NS ID? ID);
 
 s_expr	:	^('==' s_expr s_expr) 

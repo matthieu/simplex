@@ -118,10 +118,11 @@ public class SimPELCompilerTest extends TestCase {
         server.deploy(process);
 
         Document doc = DOMUtils.newDocument();
-        Element wrapper = doc.createElement("wrapper");
+        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper");
         wrapper.setTextContent("Hello");
 
         Element result = server.sendMessage("my_pl", "hello_op", wrapper);
+        assertTrue(DOMUtils.domToString(result).indexOf("Hello World") > 0);
     }
 
     private String readProcess(String fileName) throws Exception {
@@ -148,7 +149,6 @@ public class SimPELCompilerTest extends TestCase {
             fail("There were failures.");
         }
     }
-
 
     private static class TestErrorListener implements ErrorListener {
         public StringBuffer messages = new StringBuffer();

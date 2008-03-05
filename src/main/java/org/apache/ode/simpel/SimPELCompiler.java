@@ -57,6 +57,9 @@ public class SimPELCompiler {
         }
         // pull out the tree and cast it
         Tree t = (Tree)result.getTree();
+        StringBuffer b = new StringBuffer();
+        toText((LinkedListTree) t, b);
+        System.out.println(b.toString());
 
         if (t != null) {
             //  Handle functions separately
@@ -78,6 +81,12 @@ public class SimPELCompiler {
             return walker.getBuilder().getProcess();
         }
         return null;
+    }
+
+    private void toText(Tree t, StringBuffer b) {
+        LinkedListToken tok = ((LinkedListTree)t).getStartToken();
+        while((tok = tok.getNext()) != null)
+            if (tok.getText() != null) b.append(tok.getText());
     }
 
     private void handleFunctions(Tree t) {

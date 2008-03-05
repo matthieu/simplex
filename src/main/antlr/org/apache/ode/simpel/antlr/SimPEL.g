@@ -147,7 +147,7 @@ receive_base
 
 reply	:	'reply' '(' ID (',' ID ',' ID)? ')' -> ^(REPLY ID (ID ID)?);
 
-assign	:	path_expr '=' rvalue -> ^(ASSIGN ID rvalue);
+assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue
 	:	 receive_base -> ^(RECEIVE receive_base)
 		| invoke | expr | xml_literal;

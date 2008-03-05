@@ -64,9 +64,29 @@ define "simpel" do
   meta_inf << file("NOTICE")
 
   pkg_name = "org.apache.ode.simpel.antlr"
-  compile.from antlr(_("src/main/antlr"), {:in_package=>pkg_name, :token=>pkg_name})
+  antlr_task = antlr(_("src/main/antlr"), {:in_package=>pkg_name, :token=>pkg_name})
+
+  # Because of a pending ANTLR bug, we need to insert some additional 
+  # code in generated classes.
+  task('tweak_antlr' => antlr_task) do
+    walker = _("target/generated/antlr/org/apache/ode/simpel/antlr/SimPELWalker.java")
+    walker_txt = File.read(walker)
+
+    patch_walker = lambda do |regx, offset, txt|
+      insrt_idx = walker_txt.index(regx)
+      walker_txt.insert(insrt_idx + offset, txt)
+    end
+    patch_walker[/SimPELWalker.g(.*)ns_id$/, 51, "ids = (LinkedListTree)input.LT(1);"]
+    patch_walker[/SimPELWalker.g(.*) \( path_expr \)$/, 37, "lv = (LinkedListTree)input.LT(1);"]
+    patch_walker[/SimPELWalker.g(.*) \( rvalue \)$/, 34, "rv = (LinkedListTree)input.LT(1);"]
+
+    File.open(walker, 'w') { |f| f << walker_txt }
+  end
+
+  compile.from antlr_task
+  compile.enhance([task('tweak_antlr')])
   compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging, ODE, LOG4J, 
     WSDL4J, GERONIMO.transaction, XERCES,
-    file(_("lib/e4x-grammar-0.1.jar")), file(_("lib/antlr-20071220.jar"))
+    file(_("lib/e4x-grammar-0.1.jar")), file(_("lib/antlr-20080215.jar")), file(_("lib/rhino-1.7R1.jar"))
   package :jar
 end
