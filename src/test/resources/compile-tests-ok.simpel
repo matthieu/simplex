@@ -17,7 +17,7 @@ process ReceiveReply {
 process StaticXML {
   receive(my_pl, start_op) { |msg_in|
     resp = <root><count start="0">0</count></root>;
-    while(resp < 10) {
+    while(resp.count < 10) {
       invoke(partner_pl, partner_start_op, msg_in);
       resp = receive(partner_pl, partner_reply_op);
     }

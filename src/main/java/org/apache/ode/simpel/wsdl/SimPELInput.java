@@ -2,16 +2,18 @@ package org.apache.ode.simpel.wsdl;
 
 import javax.wsdl.Input;
 import javax.wsdl.Message;
+import javax.xml.namespace.QName;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class SimPELInput extends SimPELWSDLElement implements Input {
     private String name;
-    private SimPELMessage _message = new SimPELMessage();
+    private SimPELMessage _message;
 
-    public SimPELInput(String name) {
-        this.name = name;
+    public SimPELInput(QName msgName) {
+        name = "Request";
+        _message = new SimPELMessage(msgName);
     }
     public void setName(String s) {
         this.name = s;

@@ -7,18 +7,24 @@ import javax.xml.namespace.QName;
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class SimPELPart extends SimPELWSDLElement implements Part {
+    private QName _elmtName;
+
+    public SimPELPart(QName elmtName) {
+        _elmtName = elmtName;
+    }
+
     public void setName(String s) {
     }
 
     public String getName() {
-        return "payload";
+        return _elmtName.getLocalPart();
     }
 
     public void setElementName(QName qName) {
     }
 
     public QName getElementName() {
-        return new QName("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper");
+        return _elmtName;
     }
 
     public void setTypeName(QName qName) {

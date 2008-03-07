@@ -1,17 +1,19 @@
 package org.apache.ode.simpel.wsdl;
 
-import javax.wsdl.Output;
 import javax.wsdl.Message;
+import javax.wsdl.Output;
+import javax.xml.namespace.QName;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class SimPELOutput extends SimPELWSDLElement implements Output {
     private String name;
-    private SimPELMessage _message = new SimPELMessage();
+    private SimPELMessage _message;
 
-    public SimPELOutput(String name) {
-        this.name = name;
+    public SimPELOutput(QName msgName) {
+        this.name = "Response";
+        _message =  new SimPELMessage(msgName);
     }
     public void setName(String s) {
         this.name = s;

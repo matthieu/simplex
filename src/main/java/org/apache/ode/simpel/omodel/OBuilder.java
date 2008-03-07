@@ -25,6 +25,7 @@ public class OBuilder extends BaseCompiler {
     private static final String SIMPEL_NS = "http://ode.apache.org/simpel/1.0/definition";
 
     private OExpressionLanguage _exprLang;
+    private String _processNS;
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String,OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
     private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
@@ -85,6 +86,7 @@ public class OBuilder extends BaseCompiler {
         else _oprocess.targetNamespace = namespaces.get(prefix);
 
         _oprocess.expressionLanguages.add(_exprLang);
+        _processNS = SIMPEL_NS + "/" + name;
 
         final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
@@ -129,7 +131,7 @@ public class OBuilder extends BaseCompiler {
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
         vref.variable = resolveVariable(oscope, lexpr);
         vref.part = new OMessageVarType.Part(_oprocess, "payload",
-                new OElementVarType(_oprocess, new QName("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper")));
+                new OElementVarType(_oprocess, new QName(_processNS, "simpelWrapper")));
         ocopy.to = vref;
 
         rexpr.expressionLanguage = _exprLang;
@@ -139,7 +141,7 @@ public class OBuilder extends BaseCompiler {
 
     public SimpleActivity buildReply(OReply oreply, OScope oscope, OPickReceive oreceive,
                              String var, String partnerLink, String operation) {
-        oreply.variable = resolveVariable(oscope, var);
+        oreply.variable = resolveVariable(oscope, var, operation, false);
         if (partnerLink == null) {
             if (oreceive == null) throw new RuntimeException("No parent receive but reply with var " + var +
                     " has no partnerLink/operation information.");
@@ -151,7 +153,7 @@ public class OBuilder extends BaseCompiler {
         }
         // Adding partner role
         buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), false);
-        oreply.operation.setOutput(new SimPELOutput("out"));
+        oreply.operation.setOutput(new SimPELOutput(new QName(_processNS, operation + "Response")));
         return new SimpleActivity<OReply>(oreply);
     }
 
@@ -165,7 +167,8 @@ public class OBuilder extends BaseCompiler {
         }
         OActivity oact = ((OSequence)blockActivity).sequence.get(0);
         if (oact instanceof OPickReceive) {
-            ((OPickReceive)oact).onMessages.get(0).variable = resolveVariable(oscope, varName);
+            OPickReceive.OnMessage rec = ((OPickReceive)oact).onMessages.get(0);
+            rec.variable = resolveVariable(oscope, varName, rec.operation.getName(), true);
         } else __log.warn("Can't set block parameter on activity " + oact);
     }
 
@@ -198,32 +201,44 @@ public class OBuilder extends BaseCompiler {
             PortType pt = resolved.myRolePortType;
             if (pt == null) pt = resolved.myRolePortType = new SimPELPortType();
             SimPELOperation op = new SimPELOperation(operation);
-            op.setInput(new SimPELInput("in"));
+            op.setInput(new SimPELInput(new QName(_processNS, operation + "Request")));
             pt.addOperation(op);
         } else {
             PortType pt = resolved.partnerRolePortType;
             if (pt == null) pt = resolved.partnerRolePortType = new SimPELPortType();
             SimPELOperation op = new SimPELOperation(operation);
-            op.setOutput(new SimPELOutput("out"));
+            op.setOutput(new SimPELOutput(new QName(_processNS, operation + "Response")));
             pt.addOperation(op);
         }
         return resolved;
     }
 
     private OScope.Variable resolveVariable(OScope oscope, String name) {
+        return resolveVariable(oscope, name, null, false);
+    }
+
+    private OScope.Variable resolveVariable(OScope oscope, String name, String operation, boolean request) {
         OScope.Variable resolved = variables.get(name);
         // TODO this will not work in case of variable name conflicts in different scopes
         if (resolved == null) {
             LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
-
             parts.add(new OMessageVarType.Part(_oprocess, "payload",
-                    new OElementVarType(_oprocess, new QName("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper"))));
-            OMessageVarType omsgType = new OMessageVarType(_oprocess,
-                    new QName("http://ode.apache.org/simpel/1.0/definition", "simpelMessage"), parts);
+                    new OElementVarType(_oprocess, new QName(_processNS, "simpelWrapper"))));
+            OMessageVarType omsgType = new OMessageVarType(_oprocess, new QName(_processNS, "simpelMessage"), parts);
             resolved = new OScope.Variable(_oprocess, omsgType);
             resolved.name = name;
             resolved.declaringScope = oscope;
             variables.put(name, resolved);
+        }
+
+        // If an operation name has been provided with which to associate this variable, we
+        // use a better naming for the part element.
+        if (operation != null) {
+            String elmtName = operation + (request ? "Request" : "Response");
+            LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
+            parts.add(new OMessageVarType.Part(_oprocess, elmtName,
+                    new OElementVarType(_oprocess, new QName(_processNS, elmtName))));
+            resolved.type = new OMessageVarType(_oprocess, new QName(_processNS, operation), parts); 
         }
         return resolved;
     }

@@ -70,7 +70,7 @@ public class EmbeddedServer {
         Document doc = DOMUtils.newDocument();
         Element msgEl = doc.createElementNS(null, "message");
         doc.appendChild(msgEl);
-        Element part = doc.createElement("payload"); // default part
+        Element part = doc.createElement(operation+"Request"); // default part
         msgEl.appendChild(part);
         part.appendChild(doc.importNode(message, true));
 

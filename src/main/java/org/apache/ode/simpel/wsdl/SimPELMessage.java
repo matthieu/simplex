@@ -12,10 +12,16 @@ import java.util.Map;
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class SimPELMessage extends SimPELWSDLElement implements Message {
-    private SimPELPart _part = new SimPELPart();
-    private QName _qname = new QName("http://ode.apache.org/simpel/1.0/definition", "simpelMessage");
+    private SimPELPart _part;
+    private QName _qname;
+
+    public SimPELMessage(QName qname) {
+        _qname = qname;
+        _part =  new SimPELPart(qname);
+    }
 
     public void setQName(QName qName) {
+        this._qname = qName;
     }
 
     public QName getQName() {

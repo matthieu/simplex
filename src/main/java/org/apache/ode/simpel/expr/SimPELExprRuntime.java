@@ -52,9 +52,7 @@ public class SimPELExprRuntime implements ExpressionLanguageRuntime {
 
         if (res instanceof String) {
             Document doc = DOMUtils.newDocument();
-            Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper");
-            wrapper.setTextContent((String) res);
-            resList.add(wrapper);
+            resList.add(doc.createTextNode((String) res));
         }
         if (res instanceof Node) resList.add((Node) res);
         return resList;

@@ -104,27 +104,6 @@ public class SimPELCompilerTest extends TestCase {
         reportErrors("Auction service", c);
     }
 
-    public void testHelloWorldComplete() throws Exception {
-        String process =
-                "process HelloWorld {\n" +
-                "  receive(my_pl, hello_op) { |msg_in|\n" +
-                "    msg_out = msg_in + \" World\";\n" +
-                "    reply(msg_out);\n" +
-                "  }\n" +
-                "}";
-
-        EmbeddedServer server = new  EmbeddedServer();
-        server.start();
-        server.deploy(process);
-
-        Document doc = DOMUtils.newDocument();
-        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition", "simpelWrapper");
-        wrapper.setTextContent("Hello");
-
-        Element result = server.sendMessage("my_pl", "hello_op", wrapper);
-        assertTrue(DOMUtils.domToString(result).indexOf("Hello World") > 0);
-    }
-
     private String readProcess(String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(
                 getClass().getClassLoader().getResource(fileName).getFile()));
