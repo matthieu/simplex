@@ -19,14 +19,6 @@ public class SimPELRuntimeTest extends TestCase {
             "  }\n" +
             "}";
 
-    private static final String POLITE_HELLO_WORLD =
-            "process HelloWorld {\n" +
-            "  receive(my_pl, hello_op) { |info|\n" +
-            "    msg_out = msg_in + \" World\";\n" +
-            "    reply(msg_out);\n" +
-            "  }\n" +
-            "}";
-
     public void testHelloWorldComplete() throws Exception {
         EmbeddedServer server = new  EmbeddedServer();
         server.start();

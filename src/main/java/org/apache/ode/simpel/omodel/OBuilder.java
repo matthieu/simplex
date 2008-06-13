@@ -35,6 +35,7 @@ public class OBuilder extends BaseCompiler {
         HashMap<String, String> exprRuntime = new HashMap<String, String>();
         exprRuntime.put("runtime-class", "org.apache.ode.simpel.expr.SimPELExprRuntime");
         _exprLang = new OExpressionLanguage(_oprocess, exprRuntime);
+        _exprLang.expressionLanguageUri = SIMPEL_NS + "/exprLang";
     }
 
     public StructuredActivity build(Class oclass, OScope oscope, StructuredActivity parent, Object... params) {
@@ -91,9 +92,13 @@ public class OBuilder extends BaseCompiler {
         final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
         _oprocess.procesScope = processScope;
-        return new StructuredActivity<OScope>(processScope) {
+        return buildScope(processScope, null);
+    }
+
+    public StructuredActivity<OScope> buildScope(final OScope oscope, OScope parentScope) {
+        return new StructuredActivity<OScope>(oscope) {
             public void run(OActivity child) {
-                processScope.activity = child;
+                oscope.activity = child;
             }
         };
     }

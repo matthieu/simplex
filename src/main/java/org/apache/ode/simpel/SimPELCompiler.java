@@ -56,9 +56,9 @@ public class SimPELCompiler {
             throw new CompilationException(e);
         }
         // pull out the tree and cast it
-        Tree t = (Tree)result.getTree();
+        LinkedListTree t = (LinkedListTree)result.getTree();
         StringBuffer b = new StringBuffer();
-        toText((LinkedListTree) t, b);
+        toText(t, b);
         System.out.println(b.toString());
 
         if (t != null) {
@@ -70,7 +70,7 @@ public class SimPELCompiler {
             SimPELWalker walker = new SimPELWalker(nodes);
             walker.setErrorListener(errListener);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
-            rewriteTokens(tokenMapping, E4XParser.tokenNames, (LinkedListTree) t, walker, false);
+            rewriteTokens(tokenMapping, E4XParser.tokenNames, t, walker, false);
 
             nodes.setTokenStream(tokenStream);
             try {
@@ -89,7 +89,7 @@ public class SimPELCompiler {
             if (tok.getText() != null) b.append(tok.getText());
     }
 
-    private void handleFunctions(Tree t) {
+    private void handleFunctions(LinkedListTree t) {
         ArrayList<Integer> toRemove = new ArrayList<Integer>();
         for(int m = 0; m < t.getChildCount(); m++) {
             if ("function".equals(t.getChild(m).getText())) {

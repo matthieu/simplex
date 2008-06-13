@@ -127,12 +127,23 @@ signal	:	^(SIGNAL ID expr?);
 join	:	^(JOIN ID* expr?);
 
 if_ex	
-	:	^(IF expr body (^(ELSE body))?);
+scope ExprContext;
+	:	^(IF {
+        $ExprContext::expr = new SimPELExpr(builder.getProcess());
+    }
+    e=expr body (^(ELSE body))?) {
+        // TODO compile if        
+    };
 
 while_ex
-	:	^(WHILE expr body);
+scope ExprContext;
+	:	^(WHILE {
+        $ExprContext::expr = new SimPELExpr(builder.getProcess());
+    }
+    expr body);
 
 until_ex
+scope ExprContext;
 	:	^(UNTIL expr body);
 
 foreach	
@@ -142,7 +153,11 @@ forall
 
 try_ex
 scope BPELScope;
-	:	^(TRY body catch_ex*);
+	:	^(TRY {
+      OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, null, $Parent::activity);
+      $BPELScope::oscope = oscope.getOActivity();
+    }
+    body catch_ex*);
 catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 
 scope_ex
@@ -157,40 +172,48 @@ compensation
 	:	^(COMPENSATION body);
 
 with_ex 
-	:       ^(WITH with_map* body);
+scope ExprContext;
+	: ^(WITH {
+        $ExprContext::expr = new SimPELExpr(builder.getProcess());
+    }
+    with_map* body);
 with_map:       ^(MAP ID path_expr);
 
 // Simple activities
 invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
 
-reply	:	^(REPLY msg=ID (pl=ID var=ID)?) 
-		{ builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
-			$ReceiveBlock::receive, text($msg), text($pl), text($var)); };
+reply	
+  :	^(REPLY msg=ID (pl=ID var=ID)?) {
+      if (ReceiveBlock_stack.size() > 0)
+        builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
+			      $ReceiveBlock::receive, text($msg), text($pl), text($var));
+      else
+        builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
+			      null, text($msg), text($pl), text($var));
+    };
 receive	
 scope ReceiveBlock;
-	:	^(RECEIVE ^(p=ID o=ID correlation?))
-		{ 
-                  OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope, 
-                      $Parent::activity, text($p), text($o)); 
-		  $ReceiveBlock::receive = rec.getOActivity();
+	:	^(RECEIVE ^(p=ID o=ID correlation?)) { 
+        OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope, 
+        $Parent::activity, text($p), text($o)); 
+		    $ReceiveBlock::receive = rec.getOActivity();
 		}
 		(prb=(param_block))?;
-	
 
 assign	
 scope ExprContext;
-	:	^(ASSIGN 
-                {
-                  $ExprContext::expr = new SimPELExpr(builder.getProcess());
-                }
-                lv=(path_expr) rv=(rvalue)) 
-                {
-                  $ExprContext::expr.setExpr(deepText($rv));
-		  OBuilder.StructuredActivity<OAssign> assign = builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, deepText($lv), $ExprContext::expr);
-                  // The long, winding road of abstraction
-                  $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.getOActivity().operations.get(0)).from).expression;
-                };
+	:	^(ASSIGN {
+        $ExprContext::expr = new SimPELExpr(builder.getProcess());
+    }
+    lv=(path_expr) rv=(rvalue)) {
+        $ExprContext::expr.setExpr(deepText($rv));
+		    OBuilder.StructuredActivity<OAssign> assign = 
+            builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, deepText($lv), $ExprContext::expr);
+        // The long, winding road of abstraction
+        $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.
+            getOActivity().operations.get(0)).from).expression;
+    };
 rvalue	:	receive | invoke | expr | xmlElement;
 	
 throw_ex:	^(THROW ns_id);
@@ -204,8 +227,13 @@ variable:	^(VARIABLE ID VAR_MODS*);
 
 partner_link
 	:	^(PARTNERLINK ID*);
+
 correlation
-	:	^(CORRELATION corr_mapping*);
+scope ExprContext;
+	:	^(CORRELATION { 
+        $ExprContext::expr = new SimPELExpr(builder.getProcess());
+    }
+    corr_mapping*);
 corr_mapping
 	:	^(CORR_MAP ID expr);
 
@@ -227,7 +255,9 @@ expr	:	s_expr | EXT_EXPR | funct_call;
 funct_call
 	:	^(CALL ID*);
 path_expr
-	:	^(PATH ids=(ns_id*)) { builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, deepText($ids)); };
+	:	^(PATH ids=(ns_id*)) { 
+        builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, deepText($ids));
+    };
 ns_id	:	^(NS ID? ID);
 
 s_expr	:	^('==' s_expr s_expr) 

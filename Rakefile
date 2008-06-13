@@ -15,7 +15,7 @@
 #    limitations under the License.
 #
 
-gem "buildr", "~>1.2.4"
+gem "buildr", "~>1.3"
 require "buildr"
 require "buildr/antlr"
 
@@ -38,20 +38,15 @@ JAVAX               = struct(
   :transaction      =>"org.apache.geronimo.specs:geronimo-jta_1.1_spec:jar:1.1",
   :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0"
 )
-LOG4J  = "log4j:log4j:jar:1.2.15"
-ODE     = ["org.apache.ode:ode-bpel-api:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-bpel-compiler:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-bpel-dao:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-bpel-obj:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-bpel-runtime:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-il-common:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-jacob:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-scheduler-simple:jar:1.2-SNAPSHOT",
-           "org.apache.ode:ode-utils:jar:1.2-SNAPSHOT"]
-WSDL4J  = "wsdl4j:wsdl4j:jar:1.6.2"
+LOG4J               = "log4j:log4j:jar:1.2.15"
+ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-bpel-obj", 
+                            "ode-bpel-runtime", "ode-il-common", "ode-jacob", "ode-scheduler-simple", 
+                            "ode-utils", :under=>"org.apache.ode", :version=>"1.3-SNAPSHOT")
+WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"
 XERCES              = "xerces:xercesImpl:jar:2.9.0"
 
 repositories.remote << "http://repo1.maven.org/maven2"
+repositories.remote << "http://people.apache.org/~mriou/ode-1.2RC1/"
 
 desc "ODE SimPEL process execution language."
 define "simpel" do
@@ -64,11 +59,13 @@ define "simpel" do
   meta_inf << file("NOTICE")
 
   pkg_name = "org.apache.ode.simpel.antlr"
-  antlr_task = antlr(_("src/main/antlr"), {:in_package=>pkg_name, :token=>pkg_name})
+  antlr_task = antlr([_("src/main/antlr/org/apache/ode/simpel/antlr/SimPEL.g"), 
+                             _("src/main/antlr/org/apache/ode/simpel/antlr/SimPELWalker.g")], 
+                              {:in_package=>pkg_name, :token=>pkg_name})
 
   # Because of a pending ANTLR bug, we need to insert some additional 
   # code in generated classes.
-  task('tweak_antlr' => antlr_task) do
+  task('tweak_antlr' => [antlr_task]) do
     walker = _("target/generated/antlr/org/apache/ode/simpel/antlr/SimPELWalker.java")
     walker_txt = File.read(walker)
 
@@ -87,6 +84,6 @@ define "simpel" do
   compile.enhance([task('tweak_antlr')])
   compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging, ODE, LOG4J, 
     WSDL4J, GERONIMO.transaction, XERCES,
-    file(_("lib/e4x-grammar-0.1.jar")), file(_("lib/antlr-20080215.jar")), file(_("lib/rhino-1.7R1.jar"))
+    file(_("lib/e4x-grammar-0.1.jar")), ANTLR, file(_("lib/rhino-1.7R1.jar"))
   package :jar
 end

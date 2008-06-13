@@ -26,6 +26,7 @@ import org.apache.ode.bpel.o.Serializer;
 import org.apache.ode.bpel.o.OPartnerLink;
 import org.apache.ode.simpel.SimPELCompiler;
 import org.w3c.dom.Node;
+import org.w3c.dom.Element;
 
 import javax.wsdl.Definition;
 import javax.xml.namespace.QName;
@@ -172,10 +173,6 @@ public class EmbeddedStore implements ProcessStore {
             throw new UnsupportedOperationException();
         }
 
-        public Map<QName, Node> getProperties() {
-            throw new UnsupportedOperationException();
-        }
-
         public String getPackage() {
             throw new UnsupportedOperationException();
         }
@@ -204,6 +201,18 @@ public class EmbeddedStore implements ProcessStore {
                             new QName(SIMPEL_ENDPOINT_NS, partnerLink.getName()), "SimPELPort"));
             }
             return res;
+        }
+
+        public Map<QName, Node> getProcessProperties() {
+            throw new UnsupportedOperationException();
+        }
+
+        public List<Element> getExtensionElement(QName qName) {
+            return new ArrayList<Element>();
+        }
+
+        public Map<String, String> getEndpointProperties(EndpointReference endpointReference) {
+            throw new UnsupportedOperationException();
         }
     }
 }
