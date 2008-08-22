@@ -134,11 +134,14 @@ public class OBuilder extends BaseCompiler {
 
         // TODO lvalue should also be an expression
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
-        vref.variable = resolveVariable(oscope, lexpr);
+        String lvar = lexpr.split("\\.")[0];
+        vref.variable = resolveVariable(oscope, lvar);
         vref.part = new OMessageVarType.Part(_oprocess, "payload",
                 new OElementVarType(_oprocess, new QName(_processNS, "simpelWrapper")));
         ocopy.to = vref;
 
+        rexpr.setLValue(lexpr);
+        rexpr.setLVariable(lvar);
         rexpr.expressionLanguage = _exprLang;
         ocopy.from = new OAssign.Expression(_oprocess, rexpr);
         return new SimpleActivity<OAssign>(oassign);

@@ -63,6 +63,7 @@ public class EmbeddedServer {
         String messageId = new GUID().toString();
         MyRoleMessageExchange odeMex = _resources.getServer().createMessageExchange(InvocationStyle.UNRELIABLE,
                 new QName("http://ode.apache.org/simpel/1.0/endpoint", partnerLink), operation, "" + messageId);
+        odeMex.setTimeout(100000000);
         // TODO see what kind of exceptions we should throw from here
         if (odeMex.getOperation() == null)
             throw new RuntimeException("Call to " + partnerLink + "." + operation + " was not routable.");

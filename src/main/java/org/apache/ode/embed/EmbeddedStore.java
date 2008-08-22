@@ -214,5 +214,9 @@ public class EmbeddedStore implements ProcessStore {
         public Map<String, String> getEndpointProperties(EndpointReference endpointReference) {
             throw new UnsupportedOperationException();
         }
+
+        public boolean isSharedService(QName qName) {
+            return false;
+        }
     }
 }

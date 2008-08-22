@@ -21,6 +21,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -125,7 +126,7 @@ public class ServerResources {
             }
         }
 
-        SimpleScheduler scheduler = new SimpleScheduler(new GUID().toString(),new JdbcDelegate(_ds));
+        SimpleScheduler scheduler = new SimpleScheduler(new GUID().toString(),new JdbcDelegate(_ds), new Properties());
         scheduler.setTransactionManager(_txMgr);
         _scheduler = scheduler;
         return scheduler;
@@ -195,7 +196,7 @@ public class ServerResources {
                     "  nodeid char(64)  NULL," +
                     "  scheduled int DEFAULT 0 NOT NULL," +
                     "  transacted int DEFAULT 0 NOT NULL," +
-                    "  details LONG VARBINARY NULL," +
+                    "  details LONGVARBINARY NULL," +
                     "  PRIMARY KEY(jobid));" +
                     "CREATE INDEX IDX_ODE_JOB_TS ON ODE_JOB (ts);" +
                     "CREATE INDEX IDX_ODE_JOB_NODEID ON ODE_JOB (nodeid);";
