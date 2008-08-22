@@ -195,7 +195,7 @@ public class ServerResources {
                     "  nodeid char(64)  NULL," +
                     "  scheduled int DEFAULT 0 NOT NULL," +
                     "  transacted int DEFAULT 0 NOT NULL," +
-                    "  details LONGVARBINARY NULL," +
+                    "  details LONG VARBINARY NULL," +
                     "  PRIMARY KEY(jobid));" +
                     "CREATE INDEX IDX_ODE_JOB_TS ON ODE_JOB (ts);" +
                     "CREATE INDEX IDX_ODE_JOB_NODEID ON ODE_JOB (nodeid);";
