@@ -127,13 +127,16 @@ signal	:	^(SIGNAL ID expr?);
 join	:	^(JOIN ID* expr?);
 
 if_ex	
-scope ExprContext;
+scope ExprContext Parent;
 	:	^(IF {
         $ExprContext::expr = new SimPELExpr(builder.getProcess());
     }
-    e=expr body (^(ELSE body))?) {
-        // TODO compile if        
-    };
+    e=(expr) {
+        $ExprContext::expr.setExpr(deepText($e));
+        OBuilder.StructuredActivity<OSwitch> oswitch = builder.build(OSwitch.class, $BPELScope::oscope, $Parent[-1]::activity, $ExprContext::expr);
+        $Parent::activity = oswitch;
+    } b1=(body)
+    (^(ELSE b2=(body)))?);
 
 while_ex
 scope ExprContext;
@@ -195,8 +198,8 @@ reply
 receive	
 scope ReceiveBlock;
 	:	^(RECEIVE ^(p=ID o=ID correlation?)) { 
-        OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope, 
-        $Parent::activity, text($p), text($o)); 
+            OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
+                $Parent::activity, text($p), text($o));
 		    $ReceiveBlock::receive = rec.getOActivity();
 		}
 		(prb=(param_block))?;
@@ -208,7 +211,7 @@ scope ExprContext;
     }
     lv=(path_expr) rv=(rvalue)) {
         $ExprContext::expr.setExpr(deepText($rv));
-		    OBuilder.StructuredActivity<OAssign> assign = 
+		OBuilder.StructuredActivity<OAssign> assign =
             builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, deepText($lv), $ExprContext::expr);
         // The long, winding road of abstraction
         $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.

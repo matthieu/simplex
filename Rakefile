@@ -76,6 +76,7 @@ define "simpel" do
     patch_walker[/SimPELWalker.g(.*)ns_id$/, 51, "ids = (LinkedListTree)input.LT(1);"]
     patch_walker[/SimPELWalker.g(.*) \( path_expr \)$/, 37, "lv = (LinkedListTree)input.LT(1);"]
     patch_walker[/SimPELWalker.g(.*) \( rvalue \)$/, 34, "rv = (LinkedListTree)input.LT(1);"]
+    patch_walker[/SimPELWalker.g(.*) \( expr \)$/, 34, "e = (LinkedListTree)input.LT(1);"]
 
     File.open(walker, 'w') { |f| f << walker_txt }
   end

@@ -25,6 +25,7 @@ public class OBuilder extends BaseCompiler {
     private static final String SIMPEL_NS = "http://ode.apache.org/simpel/1.0/definition";
 
     private OExpressionLanguage _exprLang;
+    private OExpressionLanguage _konstExprLang;
     private String _processNS;
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String,OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
@@ -33,7 +34,7 @@ public class OBuilder extends BaseCompiler {
 
     public OBuilder() {
         HashMap<String, String> exprRuntime = new HashMap<String, String>();
-        exprRuntime.put("runtime-class", "org.apache.ode.simpel.expr.SimPELExprRuntime");
+        exprRuntime.put("runtime-class", "org.apache.ode.simpel.expr.E4XExprRuntime");
         _exprLang = new OExpressionLanguage(_oprocess, exprRuntime);
         _exprLang.expressionLanguageUri = SIMPEL_NS + "/exprLang";
     }
@@ -89,6 +90,12 @@ public class OBuilder extends BaseCompiler {
         _oprocess.expressionLanguages.add(_exprLang);
         _processNS = SIMPEL_NS + "/" + name;
 
+        _konstExprLang = new OExpressionLanguage(_oprocess, null);
+        _konstExprLang.expressionLanguageUri = "uri:www.fivesight.com/konstExpression";
+        _konstExprLang.properties.put("runtime-class",
+                "org.apache.ode.bpel.runtime.explang.konst.KonstExpressionLanguageRuntimeImpl");
+        _oprocess.expressionLanguages.add(_konstExprLang);
+
         final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
         _oprocess.procesScope = processScope;
@@ -99,6 +106,25 @@ public class OBuilder extends BaseCompiler {
         return new StructuredActivity<OScope>(oscope) {
             public void run(OActivity child) {
                 oscope.activity = child;
+            }
+        };
+    }
+
+    public StructuredActivity<OSwitch> buildSwitch(final OSwitch oswitch, OScope parentScope, SimPELExpr condExpr) {
+        final OSwitch.OCase success = new OSwitch.OCase(_oprocess);
+        success.expression = condExpr;
+        success.expression.expressionLanguage = _exprLang;
+        oswitch.addCase(success);
+
+        return new StructuredActivity<OSwitch>(oswitch) {
+            public void run(OActivity child) {
+                if (success.activity == null) success.activity = child;
+                else {
+                    OSwitch.OCase opposite = new OSwitch.OCase(_oprocess);
+                    opposite.expression = booleanExpr(true);
+                    opposite.activity = child;
+                    oswitch.addCase(opposite);
+                }
             }
         };
     }
@@ -132,7 +158,6 @@ public class OBuilder extends BaseCompiler {
         OAssign.Copy ocopy = new OAssign.Copy(_oprocess);
         oassign.operations.add(ocopy);
 
-        // TODO lvalue should also be an expression
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
         String lvar = lexpr.split("\\.")[0];
         vref.variable = resolveVariable(oscope, lvar);
@@ -250,6 +275,13 @@ public class OBuilder extends BaseCompiler {
         }
         return resolved;
     }
+
+    private OExpression booleanExpr(boolean value) {
+        OConstantExpression ce = new OConstantExpression(_oprocess, value ? Boolean.TRUE : Boolean.FALSE);
+        ce.expressionLanguage = _konstExprLang;
+        return ce;
+    }
+
 
     protected String getBpwsNamespace() {
         return "http://ode.apache.org/simpel/1.0";

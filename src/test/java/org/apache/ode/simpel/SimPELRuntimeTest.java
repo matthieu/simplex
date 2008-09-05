@@ -29,7 +29,19 @@ public class SimPELRuntimeTest extends TestCase {
             "        friendInfo.phone = msgIn.person.phone;\n" +
             "        reply(friendInfo);\n" +
             "    }\n" +
-             "}";
+            "}";
+
+    private static final String SIMPLE_IF =
+            "process SimpleIf {\n" +
+            "    receive(ifPl, ifOp) { |quantity|\n" +
+            "        if (quantity > 20) {\n" +
+            "            status = 0; \n" +
+            "        } else { \n" +
+            "            status = 1; \n" +
+            "        }\n" +
+            "        reply(status);\n" +
+            "    }\n" +
+            "}";
 
     public void testHelloWorldComplete() throws Exception {
         EmbeddedServer server = new  EmbeddedServer();
@@ -64,5 +76,23 @@ public class SimPELRuntimeTest extends TestCase {
         assertNotNull(DOMUtils.findChildByName(result, new QName(null, "name")));
         assertEquals("(999)999-9999", DOMUtils.findChildByName(result, new QName(null, "phone")).getTextContent());
         assertEquals("John Doe", DOMUtils.findChildByName(result, new QName(null, "name")).getTextContent());
+    }
+
+    public void testSimpleIf() throws Exception {
+        EmbeddedServer server = new  EmbeddedServer();
+        server.start();
+        server.deploy(SIMPLE_IF);
+        Element wrapper = DOMUtils.stringToDOM(
+                "<xd:ifOpRequest xmlns:xd=\"http://ode.apache.org/simpel/1.0/definition/SimpleIf\">30</xd:ifOpRequest>");
+        Element result = server.sendMessage("ifPl", "ifOp", wrapper);
+        assertNotNull(result);
+        assertEquals(0.0f, Float.parseFloat(result.getTextContent()));
+        System.out.println(DOMUtils.domToString(result));
+
+        wrapper = DOMUtils.stringToDOM(
+                "<xd:ifOpRequest xmlns:xd=\"http://ode.apache.org/simpel/1.0/definition/SimpleIf\">10</xd:ifOpRequest>");
+        result = server.sendMessage("ifPl", "ifOp", wrapper);
+        assertNotNull(result);
+        assertEquals(1.0f, Float.parseFloat(result.getTextContent()));
     }
 }
