@@ -44,7 +44,7 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testHelloWorldComplete() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
+        EmbeddedServer server = new EmbeddedServer();
         server.start();
         server.deploy(HELLO_WORLD);
 

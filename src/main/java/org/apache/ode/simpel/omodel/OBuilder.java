@@ -1,9 +1,11 @@
 package org.apache.ode.simpel.omodel;
 
 import org.apache.log4j.Logger;
-import org.apache.ode.bpel.compiler.BaseCompiler;
+
+import org.apache.ode.bpel.compiler.v2.BaseCompiler;
+import org.apache.ode.bpel.rtrep.v2.*;
+
 import org.apache.ode.bpel.compiler.bom.Bpel20QNames;
-import org.apache.ode.bpel.o.*;
 import org.apache.ode.simpel.wsdl.SimPELInput;
 import org.apache.ode.simpel.wsdl.SimPELOperation;
 import org.apache.ode.simpel.wsdl.SimPELOutput;
@@ -28,7 +30,7 @@ public class OBuilder extends BaseCompiler {
     private OExpressionLanguage _konstExprLang;
     private String _processNS;
     private HashMap<String,String> namespaces = new HashMap<String,String>();
-    private HashMap<String,OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
+    private HashMap<String, OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
     private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
     private boolean firstReceive = true;
 
@@ -93,7 +95,7 @@ public class OBuilder extends BaseCompiler {
         _konstExprLang = new OExpressionLanguage(_oprocess, null);
         _konstExprLang.expressionLanguageUri = "uri:www.fivesight.com/konstExpression";
         _konstExprLang.properties.put("runtime-class",
-                "org.apache.ode.bpel.runtime.explang.konst.KonstExpressionLanguageRuntimeImpl");
+                "org.apache.ode.bpel.rtrep.v2.KonstExpressionLanguageRuntimeImpl");
         _oprocess.expressionLanguages.add(_konstExprLang);
 
         final OScope processScope = new OScope(_oprocess, null);

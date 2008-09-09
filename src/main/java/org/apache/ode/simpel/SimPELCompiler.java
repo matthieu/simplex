@@ -1,11 +1,12 @@
 package org.apache.ode.simpel;
 
+import org.apache.ode.bpel.rtrep.v2.OProcess;
+
 import org.antlr.runtime.ANTLRReaderStream;
 import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.tree.CommonTreeNodeStream;
 import org.antlr.runtime.tree.Tree;
 import org.antlr.runtime.tree.TreeParser;
-import org.apache.ode.bpel.o.OProcess;
 import org.apache.ode.simpel.antlr.SimPELLexer;
 import org.apache.ode.simpel.antlr.SimPELParser;
 import org.apache.ode.simpel.antlr.SimPELWalker;

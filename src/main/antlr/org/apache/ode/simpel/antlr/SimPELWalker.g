@@ -19,7 +19,7 @@ import uk.co.badgersinfoil.e4x.antlr.LinkedListToken;
 import org.apache.ode.simpel.ErrorListener;
 import org.apache.ode.simpel.omodel.OBuilder;
 import org.apache.ode.simpel.omodel.SimPELExpr;
-import org.apache.ode.bpel.o.*;
+import org.apache.ode.bpel.rtrep.v2.*;
 }
 
 @members {

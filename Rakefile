@@ -39,7 +39,7 @@ JAVAX               = struct(
   :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0"
 )
 LOG4J               = "log4j:log4j:jar:1.2.15"
-ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-bpel-obj", 
+ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-runtimes", 
                             "ode-bpel-runtime", "ode-il-common", "ode-jacob", "ode-scheduler-simple", 
                             "ode-utils", :under=>"org.apache.ode", :version=>"1.3-SNAPSHOT")
 WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"

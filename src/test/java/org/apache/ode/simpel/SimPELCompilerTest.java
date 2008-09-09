@@ -2,11 +2,7 @@ package org.apache.ode.simpel;
 
 import junit.framework.TestCase;
 import org.antlr.runtime.RecognitionException;
-import org.apache.ode.EmbeddedServer;
-import org.apache.ode.bpel.o.OProcess;
-import org.apache.ode.utils.DOMUtils;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import org.apache.ode.bpel.rtrep.v2.OProcess;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

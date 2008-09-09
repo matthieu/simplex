@@ -1,8 +1,6 @@
 package org.apache.ode.simpel.omodel;
 
-import org.apache.ode.bpel.o.OExpression;
-import org.apache.ode.bpel.o.OProcess;
-import org.apache.ode.bpel.o.OScope;
+import org.apache.ode.bpel.rtrep.v2.*;
 
 import java.util.HashMap;
 

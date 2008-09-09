@@ -19,11 +19,11 @@
 
 package org.apache.ode.embed;
 
+import org.apache.ode.bpel.rtrep.v2.*;
+
 import org.apache.ode.bpel.evt.BpelEvent;
 import org.apache.ode.bpel.iapi.*;
-import org.apache.ode.bpel.o.OProcess;
-import org.apache.ode.bpel.o.Serializer;
-import org.apache.ode.bpel.o.OPartnerLink;
+import org.apache.ode.bpel.rapi.PartnerLinkModel;
 import org.apache.ode.simpel.SimPELCompiler;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
@@ -43,7 +43,7 @@ public class EmbeddedStore implements ProcessStore {
 
     private static final String SIMPEL_ENDPOINT_NS = "http://ode.apache.org/simpel/1.0/endpoint";
 
-    private HashMap<QName, OProcess> _processes = new HashMap<QName,OProcess>();
+    private HashMap<QName, OProcess> _processes = new HashMap<QName, OProcess>();
     private SimPELCompiler _compiler = new SimPELCompiler();
     private ArrayList<ProcessStoreListener> _listeners = new ArrayList<ProcessStoreListener>();
 
@@ -146,7 +146,7 @@ public class EmbeddedStore implements ProcessStore {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             Serializer fileHeader = new Serializer(System.currentTimeMillis());
             try {
-                fileHeader.writeOProcess(_oprocess, baos);
+                fileHeader.writePModel(_oprocess, baos);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to serialize compiled OProcess!", e);
             }
@@ -195,7 +195,7 @@ public class EmbeddedStore implements ProcessStore {
 
         private Map<String, Endpoint> defaultEndpoints(boolean myrole) {
             Map<String, Endpoint> res = new HashMap<String, Endpoint>();
-            for (OPartnerLink partnerLink : _oprocess.getAllPartnerLinks()) {
+            for (PartnerLinkModel partnerLink : _oprocess.getAllPartnerLinks()) {
                 if (partnerLink.hasMyRole() && myrole || partnerLink.hasPartnerRole() && !myrole)
                     res.put(partnerLink.getName(), new Endpoint(
                             new QName(SIMPEL_ENDPOINT_NS, partnerLink.getName()), "SimPELPort"));
@@ -217,6 +217,10 @@ public class EmbeddedStore implements ProcessStore {
 
         public boolean isSharedService(QName qName) {
             return false;
+        }
+
+        public int getRuntimeVersion() {
+            return 2;
         }
     }
 }
