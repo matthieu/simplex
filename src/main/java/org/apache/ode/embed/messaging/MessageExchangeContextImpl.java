@@ -6,9 +6,11 @@ import org.apache.ode.utils.DOMUtils;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Element;
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 
 import javax.wsdl.Operation;
 import javax.wsdl.Fault;
+import javax.wsdl.Part;
 import javax.xml.namespace.QName;
 import java.util.Set;
 import java.util.HashSet;
@@ -33,10 +35,19 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
 
         Operation invokedOp = partnerMex.getPortType().getOperation(partnerMex.getOperationName(), null, null);
         try {
-            // We're placing ourselves in the doc/lit case for now, assuming a single part
+            // We're placing ourselves in the doc/lit case for now, assuming a single part with a single root element
             Element message = partnerMex.getRequest().getMessage();
-            Element response = _sender.send(partnerMex.getPortType().getQName().getLocalPart(), invokedOp.getName(), 
-                    DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(message)));
+            Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(message));
+            // TODO this assumption only works with SimPEL, in the general case we could have a NodeList
+            // and should therefore send the whole part element
+            Node payload;
+            if (DOMUtils.getFirstChildElement(root) != null)
+                payload = DOMUtils.getFirstChildElement(root);
+            else {
+                Document doc = DOMUtils.newDocument();
+                payload = doc.createTextNode(DOMUtils.getTextContent(root));
+            }
+            Node response = _sender.send(partnerMex.getPortType().getQName().getLocalPart(), invokedOp.getName(), payload);
 
             if (invokedOp.getOutput() != null) {
                 Document responseDoc = DOMUtils.newDocument();
@@ -46,10 +57,15 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
                 String partName = (String) invokedOp.getOutput().getMessage().getParts().keySet().iterator().next();
                 Element partElmt = responseDoc.createElement(partName);
                 messageElmt.appendChild(partElmt);
-                if (response != null) partElmt.appendChild(responseDoc.importNode(response, true));
+                // TODO same thing, simpel only wrapping
+                QName elmtName = ((Part)invokedOp.getOutput().getMessage().getParts().values().iterator().next()).getElementName();
+                Element partRootElmt = responseDoc.createElementNS(elmtName.getNamespaceURI(), elmtName.getLocalPart());
+                partElmt.appendChild(partRootElmt);
+                if (response != null) partRootElmt.appendChild(responseDoc.importNode(response, true));
 
                 Message responseMsg = partnerMex.createMessage(invokedOp.getOutput().getMessage().getQName());
                 responseMsg.setMessage(messageElmt);
+                partnerMex.reply(responseMsg);
             } else {
                 partnerMex.replyOneWayOk();
             }

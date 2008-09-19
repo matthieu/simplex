@@ -1,8 +1,8 @@
 package org.apache.ode.embed;
 
-import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
 public interface MessageSender {
 
-    Element send(String recipient, String operation, Element elmt);
+    Node send(String recipient, String operation, Node message);
 }

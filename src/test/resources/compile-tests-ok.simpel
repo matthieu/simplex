@@ -197,17 +197,6 @@ process pns::NamespacesProcess {
 }
 
 #=============================================================
-# Compact process
-#
-
-process CompactProcess
-  while(count < 10)
-    receive(p, o) { |m|
-      count = count + 1;
-      if (count == 10) invoke(count_partner, count_done);
-    }
-
-#=============================================================
 # External Counter
 #
 

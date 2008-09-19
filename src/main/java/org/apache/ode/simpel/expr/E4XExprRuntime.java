@@ -16,6 +16,7 @@ import org.mozilla.javascript.xml.XMLLib;
 import org.mozilla.javascript.xml.XMLObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.w3c.dom.Element;
 
 import javax.xml.namespace.QName;
 import java.util.*;
@@ -67,7 +68,11 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
             resList.add(doc.createTextNode(res.toString()));
         } else if (res instanceof XMLObject) {
             try {
-                resList.add(XMLLibImpl.toDomNode(res));
+                // Only content is copied, need to wrap
+                Document doc = DOMUtils.newDocument();
+                Element wrapper = doc.createElement("assignWrapper");
+                wrapper.appendChild(doc.importNode(XMLLibImpl.toDomNode(res), true));
+                resList.add(wrapper);
             } catch (IllegalArgumentException e) {
                 // Rhino makes it pretty hard to use it sXML impl, XML and XMLList are package level
                 // classes so I can't test on them but toDomNode doesn't accept XMLList
@@ -124,7 +129,12 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 }
                 // Simple types
                 if (node.getNodeValue() != null) return node.getNodeValue();
-                
+                else if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    Element nodeElmt = (Element) node;
+                    if (DOMUtils.getFirstChildElement(nodeElmt) == null) return nodeElmt.getTextContent();
+                    else node = DOMUtils.getFirstChildElement((Element)node);
+                }
+
                 // Have to remove the xml header otherwise it confuses Rhino
                 String[] xmlArr = DOMUtils.domToString(node).split("\n");
                 // Going back to the evaluation loop to get a Rhino XML object, their XML API just doesn't have any
@@ -135,7 +145,7 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 _env.put(name, xmlObj);
                 return xmlObj;
             } catch (Exception e) {
-                throw new RuntimeException("Error accessing variable " + name + ".");
+                throw new RuntimeException("Error accessing variable " + name + ".", e);
             }
         }
 

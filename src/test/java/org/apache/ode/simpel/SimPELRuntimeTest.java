@@ -6,6 +6,8 @@ import org.apache.ode.embed.MessageSender;
 import org.apache.ode.utils.DOMUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import javax.xml.namespace.QName;
 
@@ -39,8 +41,8 @@ public class SimPELRuntimeTest extends TestCase {
             "process XmlData {\n" +
             "    receive(dataPl, dataOp) { |msgIn|\n" +
             "        friendInfo = <friend></friend>;\n" +
-            "        friendInfo.name = msgIn.person.firstName + \" \" + msgIn.person.lastName;\n" +
-            "        friendInfo.phone = msgIn.person.phone;\n" +
+            "        friendInfo.name = msgIn.firstName + \" \" + msgIn.lastName;\n" +
+            "        friendInfo.phone = msgIn.phone;\n" +
             "        reply(friendInfo);\n" +
             "    }\n" +
             "}";
@@ -61,6 +63,8 @@ public class SimPELRuntimeTest extends TestCase {
         Element result = server.sendMessage("dataPl", "dataOp", wrapper);
         assertNotNull(result);
         System.out.println(DOMUtils.domToString(result));
+        // Eliminating the wrapper
+        result = DOMUtils.getFirstChildElement(result);
         assertNotNull(DOMUtils.findChildByName(result, new QName(null, "phone")));
         assertNotNull(DOMUtils.findChildByName(result, new QName(null, "name")));
         assertEquals("(999)999-9999", DOMUtils.findChildByName(result, new QName(null, "phone")).getTextContent());
@@ -111,8 +115,10 @@ public class SimPELRuntimeTest extends TestCase {
 
         EmbeddedServer server = new  EmbeddedServer();
         server.options.setMessageSender(new MessageSender() {
-            public Element send(String recipient, String operation, Element elmt) {
-                received[0] = true;
+            public Node send(String recipient, String operation, Node message) {
+                if (recipient.equals("partnerPl") && operation.equals("partnerOp")
+                        && message.getNodeType() == Node.TEXT_NODE && message.getTextContent().equals("ok?"))
+                    received[0] = true;
                 return null;
             }
         });
@@ -126,5 +132,44 @@ public class SimPELRuntimeTest extends TestCase {
         System.out.println(DOMUtils.domToString(result));
         assertEquals("ok", result.getTextContent());
         assertTrue(received[0]);
+    }
+
+    public static final String INVOKE_TWO_WAYS =
+            "process InvokeTwoWays {\n" +
+            "    receive(itwPl, itwOp) { |initial|\n" +
+            "        operands = <operands></operands>; \n"+
+            "        operands.op1 = initial; \n"+
+            "        operands.op2 = 3; \n"+
+            "        invoke(calculator, add, operands) { |result| \n" +
+            "           response = result; \n" +
+            "        }" +
+            "        reply(result);\n" +
+            "    }\n" +
+            "}";
+
+    public void testInvokeTwoWays() throws Exception {
+        EmbeddedServer server = new  EmbeddedServer();
+        server.options.setMessageSender(new MessageSender() {
+            public Node send(String recipient, String operation, Node elmt) {
+                if (recipient.equals("calculator") && operation.equals("add")) {
+                    Document doc = DOMUtils.newDocument();
+                    int result = 0;
+                    NodeList nl = elmt.getChildNodes();
+                    for (int m = 0; m < nl.getLength(); m++)
+                        if (nl.item(m).getNodeType() == Node.ELEMENT_NODE)
+                            result += Integer.parseInt(nl.item(m).getTextContent());
+                    return doc.createTextNode(""+result);
+                } else return null;
+            }
+        });
+        server.start();
+        server.deploy(INVOKE_TWO_WAYS);
+
+        Element wrapper = DOMUtils.stringToDOM(
+                "<xd:itwOpRequest xmlns:xd=\"http://ode.apache.org/simpel/1.0/definition/InvokeTwoWays\">7</xd:itwOpRequest>");
+        Element result = server.sendMessage("itwPl", "itwOp", wrapper);
+        assertNotNull(result);
+        System.out.println(DOMUtils.domToString(result));
+        assertEquals("10", result.getTextContent());
     }
 }

@@ -109,7 +109,8 @@ scope Parent;
 	:	^(SEQUENCE ID+
 		{ OBuilder.StructuredActivity seq = builder.build(OSequence.class, $BPELScope::oscope, $Parent[-1]::activity); 
 		  $Parent::activity = seq;
-		  builder.setBlockParam($BPELScope::oscope, (OActivity) $Parent[-1]::activity.getOActivity(), $ID.text); 
+		  //builder.setBlockParam($BPELScope::oscope, (OActivity) $Parent[-1]::activity.getOActivity(), $ID.text);
+		  builder.setBlockParam($BPELScope::oscope, (OSequence)seq.getOActivity(), $ID.text); 
 		}
 		proc_stmt+);
 body	:	block | proc_stmt;

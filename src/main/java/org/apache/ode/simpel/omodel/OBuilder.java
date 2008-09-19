@@ -13,16 +13,17 @@ import org.apache.ode.simpel.wsdl.SimPELPortType;
 import org.apache.ode.utils.GUID;
 
 import javax.wsdl.PortType;
+import javax.wsdl.Part;
 import javax.xml.namespace.QName;
 import java.lang.reflect.Method;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.HashSet;
+import java.util.*;
 
 /**
  * TODO foo = receive(...) expressions
  * TODO e4x templates
+ * TODO allow javascript blocks instead of just hooking on equal, otherwise you can't do stuff like
+ *          operations.appendChild(<operand>2</operand>);
+ *          operations.appendChild(<operand>3</operand>);
  */
 public class OBuilder extends BaseCompiler {
     private static final Logger __log = Logger.getLogger(OBuilder.class);
@@ -153,7 +154,6 @@ public class OBuilder extends BaseCompiler {
 
     public SimpleActivity buildInvoke(OInvoke invoke, OScope oscope, String partnerLink,
                                       String operation, String incomingMsg) {
-
         invoke.partnerLink = buildPartnerLink(oscope, partnerLink, operation, false, incomingMsg != null);
         invoke.operation = invoke.partnerLink.partnerRolePortType.getOperation(operation, null, null);
         if (incomingMsg != null) invoke.inputVar = resolveVariable(oscope, incomingMsg, operation, true);
@@ -176,7 +176,6 @@ public class OBuilder extends BaseCompiler {
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
         String lvar = lexpr.split("\\.")[0];
         vref.variable = resolveVariable(oscope, lvar);
-        ((OMessageVarType)vref.variable.type).parts.values().iterator();
         // Don't worry, it's all type safe, therefore it's correct
         vref.part = ((OMessageVarType)vref.variable.type).parts.values().iterator().next();
         ocopy.to = vref;
@@ -205,7 +204,7 @@ public class OBuilder extends BaseCompiler {
         return new SimpleActivity<OReply>(oreply);
     }
 
-    public void setBlockParam(OScope oscope, OActivity blockActivity, String varName) {
+    public void setBlockParam(OScope oscope, OSequence blockActivity, String varName) {
         // The AST for block activities is something like:
         //    (SEQUENCE (activity) (SEQUENCE varIds otherActivities))
         // The parent here is the first sequence so we just set the varIds on its first child activity
@@ -213,13 +212,16 @@ public class OBuilder extends BaseCompiler {
             __log.warn("Can't set block parameter with block parent activity " + blockActivity);
             return;
         }
-        OActivity oact = ((OSequence)blockActivity).sequence.get(0);
+//        OActivity oact = ((OSequence)blockActivity).sequence.get(0);
+        List<OActivity> parentList = ((OSequence)blockActivity.getParent()).sequence;
+        OActivity oact = parentList.get(parentList.indexOf(blockActivity) - 1);
         if (oact instanceof OPickReceive) {
             OPickReceive.OnMessage rec = ((OPickReceive)oact).onMessages.get(0);
             rec.variable = resolveVariable(oscope, varName, rec.operation.getName(), true);
         } else if (oact instanceof OInvoke) {
             OInvoke inv = (OInvoke)oact;
             inv.outputVar = resolveVariable(oscope, varName, inv.operation.getName(), false);
+            buildPartnerLink(oscope, inv.partnerLink.name, inv.operation.getName(), false, false);
         } else __log.warn("Can't set block parameter on activity " + oact);
     }
 
@@ -301,10 +303,18 @@ public class OBuilder extends BaseCompiler {
         // use a better naming for the part element.
         if (operation != null && !typedVariables.contains(name)) {
             String elmtName = operation + (request ? "Request" : "Response");
-            LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
-            parts.add(new OMessageVarType.Part(_oprocess, elmtName,
-                    new OElementVarType(_oprocess, new QName(_processNS, elmtName))));
-            resolved.type = new OMessageVarType(_oprocess, new QName(_processNS, operation), parts);
+            OMessageVarType varType = (OMessageVarType)resolved.type;
+            varType.messageType = new QName(_processNS, operation);
+            OMessageVarType.Part part = varType.parts.values().iterator().next();
+            part.name = elmtName;
+            part.type = new OElementVarType(_oprocess, new QName(_processNS, elmtName));
+            varType.parts.clear();
+            varType.parts.put(part.name, part);
+//
+//            LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
+//            parts.add(new OMessageVarType.Part(_oprocess, elmtName,
+//                    new OElementVarType(_oprocess, new QName(_processNS, elmtName))));
+//            resolved.type = new OMessageVarType(_oprocess, new QName(_processNS, operation), parts);
             typedVariables.add(name);
         }
         return resolved;
