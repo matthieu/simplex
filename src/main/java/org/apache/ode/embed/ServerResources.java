@@ -3,6 +3,8 @@ package org.apache.ode.embed;
 import org.apache.log4j.Logger;
 import org.apache.ode.EmbeddedServer;
 import org.apache.ode.Options;
+import org.apache.ode.embed.messaging.BindingContextImpl;
+import org.apache.ode.embed.messaging.MessageExchangeContextImpl;
 import org.apache.ode.bpel.dao.BpelDAOConnectionFactory;
 import org.apache.ode.bpel.engine.BpelServerImpl;
 import org.apache.ode.bpel.engine.CountLRUDehydrationPolicy;
@@ -70,7 +72,7 @@ public class ServerResources {
 
         _server.setDaoConnectionFactory(_daoCF);
 //        _server.setEndpointReferenceContext(new EndpointReferenceContextImpl(this));
-//        _server.setMessageExchangeContext(new MessageExchangeContextImpl(this));
+        _server.setMessageExchangeContext(new MessageExchangeContextImpl(_options.getMessageSender()));
         _server.setBindingContext(new BindingContextImpl());
         _server.setScheduler(_scheduler);
         _server.setTransactionManager(_txMgr);

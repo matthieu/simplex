@@ -1,4 +1,4 @@
-package org.apache.ode.embed;
+package org.apache.ode.embed.messaging;
 
 import org.apache.ode.bpel.iapi.*;
 import org.apache.ode.il.epr.WSDL11Endpoint;

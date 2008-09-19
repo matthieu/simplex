@@ -24,6 +24,7 @@ import org.apache.ode.bpel.rtrep.v2.*;
 import org.apache.ode.bpel.evt.BpelEvent;
 import org.apache.ode.bpel.iapi.*;
 import org.apache.ode.bpel.rapi.PartnerLinkModel;
+import org.apache.ode.bpel.rapi.Serializer;
 import org.apache.ode.simpel.SimPELCompiler;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;

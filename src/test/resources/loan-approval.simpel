@@ -11,9 +11,10 @@ process pns::LoanApproval {
       signal(receive-to-approval, [$request.amount >= 10000]);
     } and {
       join(receive-to-assess);
-      risk = invoke(assessor, check);
-      signal(assess-to-setMessage, [$risk.level = 'low']);
-      signal(assess-to-approval, [$risk.level != 'low']);
+      invoke(assessor, check) { |risk|
+        signal(assess-to-setMessage, [$risk.level = 'low']);
+        signal(assess-to-approval, [$risk.level != 'low']);
+      }
     } and {
       join(assess-to-setMessage);
       approval.accept = "yes";

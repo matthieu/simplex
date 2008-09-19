@@ -58,7 +58,7 @@ process TaskManager {
   createRequest.createRequest = [bpws:doXslTransform("actions.xsl", $createRequest.createRequest,
       "metadata", $createTaskRequest.root/b4p:taskMetaData)];
 
-  createResponse = invoke(TMSPartnerLink, create, createRequest);
+  invoke(TMSPartnerLink, create, createRequest);
 
   if (createTaskRequest.root.b4p::taskMetaData.b4p::isChainedBefore == "true") {
     nextTaskReady.root = <b4p:chainedExecution><b4p:previousTaskId/><b4p:nextTaskId/>
@@ -90,7 +90,7 @@ process TaskManager {
           oc.tms::participantToken = completeTaskRequest.root.b4p::participantToken;
         }
 
-        setOutputAndCompleteRespons = invoke(TMSPartnerLink, setOutputAndComplete, setOutputAndCompleteRequest);
+        invoke(TMSPartnerLink, setOutputAndComplete, setOutputAndCompleteRequest);
 
         notifyTaskCompletionRequest.root = <b4p:notifyTaskCompletionRequest><b4p:taskMetaData>
             <b4p:taskId/><b4p:processId/><b4p:userProcessEndpoint/><b4p:userProcessNamespaceURI/>
@@ -107,15 +107,15 @@ process TaskManager {
         }
         notifyTaskCompletionRequest.root.b4p::taskOutput = completeTaskRequest.root.b4p::taskOutput;
 
-        notifyTaskCompletionResponse = invoke(userProcessPartnerLink, notifyTaskCompletion, notifyTaskCompletionRequest);
-
-        if (notifyTaskCompletionResponse.root.b4p::isChainedAfter == true) {
-          receive(nextTaskManagerPartnerLink, nextTaskReady) { |nextTaskReady|
-            completeTaskResponse.root = <b4p:response><b4p:taskMetaData><b4p:nextTaskId/>
-                <b4p:nextTaskURL/></b4p:taskMetaData><b4p:status>OK</b4p:status></b4p:response>;
-            with(ct: completeTaskResponse.root.b4p::taskMetaData) {
-              ct.b4p::nextTaskId = nextTaskReady.root.b4p::nextTaskId;
-              ct.b4p::nextTaskURL = nextTaskReady.root.b4p::nextTaskURL;
+        invoke(userProcessPartnerLink, notifyTaskCompletion, notifyTaskCompletionRequest) { |notifyTaskCompletionResponse|
+          if (notifyTaskCompletionResponse.root.b4p::isChainedAfter == true) {
+            receive(nextTaskManagerPartnerLink, nextTaskReady) { |nextTaskReady|
+              completeTaskResponse.root = <b4p:response><b4p:taskMetaData><b4p:nextTaskId/>
+                  <b4p:nextTaskURL/></b4p:taskMetaData><b4p:status>OK</b4p:status></b4p:response>;
+              with(ct: completeTaskResponse.root.b4p::taskMetaData) {
+                ct.b4p::nextTaskId = nextTaskReady.root.b4p::nextTaskId;
+                ct.b4p::nextTaskURL = nextTaskReady.root.b4p::nextTaskURL;
+              }
             }
           }
         }
@@ -133,7 +133,7 @@ process TaskManager {
           rr.tms::roleOwner = etr.b4p::roleOwner;
         }
 
-        reassignRequest = invoke(TMSPartnerLink, reassign, reassignRequest);
+        invoke(TMSPartnerLink, reassign, reassignRequest);
 
         taskClaimed = false;
         escalateTaskResponse.root = <b4p:escalateTaskResponse><b4p:status>OK</b4p:status></b4p:escalateTaskResponse>;
@@ -164,7 +164,7 @@ process TaskManager {
           rr.tms::participantToken = ct.b4p::participantToken;
         }
 
-        reassignResponse = invoke(TMSPartnerLink, reassign, reassignRequest);
+        invoke(TMSPartnerLink, reassign, reassignRequest);
         taskClaimed = true;
         claimTaskResponse.root = <b4p:claimTaskResponse><b4p:status>OK</b4p:status></b4p:claimTaskResponse>;
         reply(claimTaskResponse);
@@ -184,7 +184,7 @@ process TaskManager {
           rr.tms::participantToken = rt.b4p::participantToken;
         }
 
-        reassignResponse = invoke(TMSPartnerLink, reassign, reassignRequest);
+        invoke(TMSPartnerLink, reassign, reassignRequest);
         taskClaimed = false;
         revokeTaskResponse.root = <b4p:revokeTaskResponse><b4p:status>OK</b4p:status></b4p:revokeTaskResponse>;
         reply(revokeTaskResponse);

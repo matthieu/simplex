@@ -138,6 +138,19 @@ process HelloWorld {
 }
 
 #=============================================================
+# Block invoke
+#
+
+process HelloWorld {
+  receive(my_pl, hello_op) { |msg_in|
+    invoke(other_pl, other_op, msg_in) { |resp|
+      if (resp != "Hello ") throw(WrongMsg);
+    }
+    reply(msg_in);
+  }
+}
+
+#=============================================================
 # Forced Hello World (if and throw)
 #
 

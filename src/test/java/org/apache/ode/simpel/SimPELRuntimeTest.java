@@ -2,6 +2,7 @@ package org.apache.ode.simpel;
 
 import junit.framework.TestCase;
 import org.apache.ode.EmbeddedServer;
+import org.apache.ode.embed.MessageSender;
 import org.apache.ode.utils.DOMUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -21,29 +22,7 @@ public class SimPELRuntimeTest extends TestCase {
             "   }\n" +
             "}";
 
-    private static final String XML_DATA_MANIPULATION =
-            "process XmlData {\n" +
-            "    receive(dataPl, dataOp) { |msgIn|\n" +
-            "        friendInfo = <friend></friend>;\n" + // TODO check template style E4X
-            "        friendInfo.name = msgIn.person.firstName + \" \" + msgIn.person.lastName;\n" +
-            "        friendInfo.phone = msgIn.person.phone;\n" +
-            "        reply(friendInfo);\n" +
-            "    }\n" +
-            "}";
-
-    private static final String SIMPLE_IF =
-            "process SimpleIf {\n" +
-            "    receive(ifPl, ifOp) { |quantity|\n" +
-            "        if (quantity > 20) {\n" +
-            "            status = 0; \n" +
-            "        } else { \n" +
-            "            status = 1; \n" +
-            "        }\n" +
-            "        reply(status);\n" +
-            "    }\n" +
-            "}";
-
-    public void testHelloWorldComplete() throws Exception {
+    public void testHelloWorld() throws Exception {
         EmbeddedServer server = new EmbeddedServer();
         server.start();
         server.deploy(HELLO_WORLD);
@@ -55,6 +34,16 @@ public class SimPELRuntimeTest extends TestCase {
         Element result = server.sendMessage("myPl", "helloOp", wrapper);
         assertTrue(DOMUtils.domToString(result).indexOf("Hello World") > 0);
     }
+
+    private static final String XML_DATA_MANIPULATION =
+            "process XmlData {\n" +
+            "    receive(dataPl, dataOp) { |msgIn|\n" +
+            "        friendInfo = <friend></friend>;\n" +
+            "        friendInfo.name = msgIn.person.firstName + \" \" + msgIn.person.lastName;\n" +
+            "        friendInfo.phone = msgIn.person.phone;\n" +
+            "        reply(friendInfo);\n" +
+            "    }\n" +
+            "}";
 
     public void testXmlData() throws Exception {
         EmbeddedServer server = new  EmbeddedServer();
@@ -78,6 +67,18 @@ public class SimPELRuntimeTest extends TestCase {
         assertEquals("John Doe", DOMUtils.findChildByName(result, new QName(null, "name")).getTextContent());
     }
 
+    private static final String SIMPLE_IF =
+            "process SimpleIf {\n" +
+            "    receive(ifPl, ifOp) { |quantity|\n" +
+            "        if (quantity > 20) {\n" +
+            "            status = 0; \n" +
+            "        } else { \n" +
+            "            status = 1; \n" +
+            "        }\n" +
+            "        reply(status);\n" +
+            "    }\n" +
+            "}";
+
     public void testSimpleIf() throws Exception {
         EmbeddedServer server = new  EmbeddedServer();
         server.start();
@@ -94,5 +95,36 @@ public class SimPELRuntimeTest extends TestCase {
         result = server.sendMessage("ifPl", "ifOp", wrapper);
         assertNotNull(result);
         assertEquals(1.0f, Float.parseFloat(result.getTextContent()));
+    }
+
+    public static final String INVOKE_ONE_WAY =
+            "process InvokeOneWay {\n" +
+            "    receive(iowPl, iowOp) { |status|\n" +
+            "        invoke(partnerPl, partnerOp, status);\n" +
+            "        status = \"ok\";\n" +
+            "        reply(status);\n" +
+            "    }\n" +
+            "}";
+
+    public void testInvokeOneWay() throws Exception {
+        final Boolean[] received = new Boolean[] { false };
+
+        EmbeddedServer server = new  EmbeddedServer();
+        server.options.setMessageSender(new MessageSender() {
+            public Element send(String recipient, String operation, Element elmt) {
+                received[0] = true;
+                return null;
+            }
+        });
+        server.start();
+        server.deploy(INVOKE_ONE_WAY);
+
+        Element wrapper = DOMUtils.stringToDOM(
+                "<xd:iowOpRequest xmlns:xd=\"http://ode.apache.org/simpel/1.0/definition/InvokeOneWay\">ok?</xd:iowOpRequest>");
+        Element result = server.sendMessage("iowPl", "iowOp", wrapper);
+        assertNotNull(result);
+        System.out.println(DOMUtils.domToString(result));
+        assertEquals("ok", result.getTextContent());
+        assertTrue(received[0]);
     }
 }

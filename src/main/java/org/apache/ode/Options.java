@@ -20,13 +20,15 @@ package org.apache.ode;
 
 import org.apache.ode.il.config.OdeConfigProperties;
 import org.apache.ode.bpel.iapi.BpelEventListener;
+import org.apache.ode.bpel.iapi.MessageExchangeContext;
+import org.apache.ode.embed.MessageSender;
 
 import java.io.File;
 import java.util.Properties;
 import java.util.List;
 
 /**
- * @author Matthieu Riou <mriou@apache.org>
+ * Used to customize the behavior of the server in several sort of ways.
  */
 public class Options {
 
@@ -72,7 +74,15 @@ public class Options {
         _eventListeners = listeners;
     }
 
+    public MessageSender getMessageSender() {
+        return (MessageSender) _backingProps.get(MessageSender.class.getName());
+    }
+    public void setMessageSender(MessageSender sender) {
+        _backingProps.put(MessageSender.class.getName(), sender);
+    }
+
     public Properties getProperties() {
         return _backingProps;
     }
+
 }

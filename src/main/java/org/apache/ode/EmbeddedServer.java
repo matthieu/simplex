@@ -36,15 +36,19 @@ import java.util.concurrent.Future;
 public class EmbeddedServer {
     private static final Logger __log = Logger.getLogger(EmbeddedServer.class);
 
-    protected Options _options;
+    public Options options;
     protected ServerResources _resources;
 
+    public EmbeddedServer() {
+        this.options = new Options();
+    }
+
     public void start() {
-        start(new Options());
+        start(options);
     }
 
     public void start(Options options) {
-        _options = options;
+        this.options = options;
         _resources = new ServerResources(options);
     }
 

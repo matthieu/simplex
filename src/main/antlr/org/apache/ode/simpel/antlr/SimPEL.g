@@ -94,7 +94,7 @@ process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
-		| receive | ((invoke | reply | assign | throw_ex | wait_ex | exit | signal | join
+		| receive | invoke | ((reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables | partner_link) SEMI!);
 
 block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
@@ -136,21 +136,27 @@ with_ex :
 with_map:       ID ':' path_expr -> ^(MAP ID path_expr);
 
 // Simple activities
-invoke	:	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^(INVOKE $p $o $in?);
+
+invoke
+options {backtrack=true;}
+        :	invoke_base SEMI -> ^(INVOKE invoke_base)
+            | invoke_base param_block -> ^(INVOKE invoke_base) param_block;
+invoke_base
+        :	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^($p $o $in?);
 
 receive	
 options {backtrack=true;}
         :	receive_base SEMI -> ^(RECEIVE receive_base) |
-                receive_base param_block -> ^(RECEIVE receive_base) param_block;
+            receive_base param_block -> ^(RECEIVE receive_base) param_block;
 receive_base
-	:	'receive' '(' p=ID ',' o=ID (',' correlation)? ')' -> ^($p $o correlation?);
+	    :	'receive' '(' p=ID ',' o=ID (',' correlation)? ')' -> ^($p $o correlation?);
 
 reply	:	'reply' '(' ID (',' ID ',' ID)? ')' -> ^(REPLY ID (ID ID)?);
 
 assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue
-	:	 receive_base -> ^(RECEIVE receive_base)
-		| invoke | expr | xml_literal;
+	    :	receive_base -> ^(RECEIVE receive_base)
+		    | invoke | expr | xml_literal;
 	
 throw_ex:	'throw' '('? ns_id ')'? -> ^(THROW ns_id);
 

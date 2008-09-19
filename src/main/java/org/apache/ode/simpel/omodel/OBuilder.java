@@ -18,9 +18,11 @@ import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.HashSet;
 
 /**
- * @author Matthieu Riou <mriou@apache.org>
+ * TODO foo = receive(...) expressions
+ * TODO e4x templates
  */
 public class OBuilder extends BaseCompiler {
     private static final Logger __log = Logger.getLogger(OBuilder.class);
@@ -32,6 +34,7 @@ public class OBuilder extends BaseCompiler {
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String, OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
     private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
+    private HashSet<String> typedVariables = new HashSet<String>();
     private boolean firstReceive = true;
 
     public OBuilder() {
@@ -133,7 +136,7 @@ public class OBuilder extends BaseCompiler {
 
     public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLink, String operation) {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
-        onMessage.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true);
+        onMessage.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, true);
         onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
 
         if (firstReceive) {
@@ -146,6 +149,16 @@ public class OBuilder extends BaseCompiler {
         receive.onMessages.add(onMessage);
 
         return new SimpleActivity<OPickReceive>(receive);
+    }
+
+    public SimpleActivity buildInvoke(OInvoke invoke, OScope oscope, String partnerLink,
+                                      String operation, String incomingMsg) {
+
+        invoke.partnerLink = buildPartnerLink(oscope, partnerLink, operation, false, incomingMsg != null);
+        invoke.operation = invoke.partnerLink.partnerRolePortType.getOperation(operation, null, null);
+        if (incomingMsg != null) invoke.inputVar = resolveVariable(oscope, incomingMsg, operation, true);
+
+        return new SimpleActivity<OInvoke>(invoke);
     }
 
     public StructuredActivity buildSequence(final OSequence seq, OScope oscope) {
@@ -163,8 +176,9 @@ public class OBuilder extends BaseCompiler {
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
         String lvar = lexpr.split("\\.")[0];
         vref.variable = resolveVariable(oscope, lvar);
-        vref.part = new OMessageVarType.Part(_oprocess, "payload",
-                new OElementVarType(_oprocess, new QName(_processNS, "simpelWrapper")));
+        ((OMessageVarType)vref.variable.type).parts.values().iterator();
+        // Don't worry, it's all type safe, therefore it's correct
+        vref.part = ((OMessageVarType)vref.variable.type).parts.values().iterator().next();
         ocopy.to = vref;
 
         rexpr.setLValue(lexpr);
@@ -182,13 +196,12 @@ public class OBuilder extends BaseCompiler {
                     " has no partnerLink/operation information.");
             oreply.partnerLink = oreceive.onMessages.get(0).partnerLink;
             oreply.operation = oreceive.onMessages.get(0).operation;
+            buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), true, false);
         } else {
-            oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true);
+            oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, false);
             oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null); 
         }
         // Adding partner role
-        buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), false);
-        oreply.operation.setOutput(new SimPELOutput(new QName(_processNS, operation + "Response")));
         return new SimpleActivity<OReply>(oreply);
     }
 
@@ -204,6 +217,9 @@ public class OBuilder extends BaseCompiler {
         if (oact instanceof OPickReceive) {
             OPickReceive.OnMessage rec = ((OPickReceive)oact).onMessages.get(0);
             rec.variable = resolveVariable(oscope, varName, rec.operation.getName(), true);
+        } else if (oact instanceof OInvoke) {
+            OInvoke inv = (OInvoke)oact;
+            inv.outputVar = resolveVariable(oscope, varName, inv.operation.getName(), false);
         } else __log.warn("Can't set block parameter on activity " + oact);
     }
 
@@ -220,7 +236,7 @@ public class OBuilder extends BaseCompiler {
         return _oprocess;
     }
 
-    private OPartnerLink buildPartnerLink(OScope oscope, String name, String operation, boolean myRole) {
+    private OPartnerLink buildPartnerLink(OScope oscope, String name, String operation, boolean myRole, Boolean input) {
         // TODO Handle partnerlinks declared with an associated endpoint
         OPartnerLink resolved = partnerLinks.get(name);
         // TODO this will not work in case of variable name conflicts in different scopes
@@ -232,18 +248,33 @@ public class OBuilder extends BaseCompiler {
             _oprocess.allPartnerLinks.add(resolved);
             oscope.partnerLinks.put(name, resolved);
         }
+        PortType pt;
         if (myRole) {
-            PortType pt = resolved.myRolePortType;
-            if (pt == null) pt = resolved.myRolePortType = new SimPELPortType();
-            SimPELOperation op = new SimPELOperation(operation);
-            op.setInput(new SimPELInput(new QName(_processNS, operation + "Request")));
-            pt.addOperation(op);
+            pt = resolved.myRolePortType;
+            if (pt == null) {
+                pt = resolved.myRolePortType = new SimPELPortType();
+                pt.setQName(new QName(SIMPEL_NS, name));
+            }
         } else {
-            PortType pt = resolved.partnerRolePortType;
-            if (pt == null) pt = resolved.partnerRolePortType = new SimPELPortType();
-            SimPELOperation op = new SimPELOperation(operation);
-            op.setOutput(new SimPELOutput(new QName(_processNS, operation + "Response")));
+            pt = resolved.partnerRolePortType;
+            if (pt == null) {
+                pt = resolved.partnerRolePortType = new SimPELPortType();
+                pt.setQName(new QName(SIMPEL_NS, name));
+            }
+        }
+
+        SimPELOperation op = (SimPELOperation) pt.getOperation(operation, null, null);
+        if (op == null) {
+            op = new SimPELOperation(operation);
             pt.addOperation(op);
+        }
+        // Java's three-way boolean
+        if (input != null) {
+            if (input) {
+                op.setInput(new SimPELInput(new QName(_processNS, operation + "Request")));
+            } else {
+                op.setOutput(new SimPELOutput(new QName(_processNS, operation + "Response")));
+            }
         }
         return resolved;
     }
@@ -268,12 +299,13 @@ public class OBuilder extends BaseCompiler {
 
         // If an operation name has been provided with which to associate this variable, we
         // use a better naming for the part element.
-        if (operation != null) {
+        if (operation != null && !typedVariables.contains(name)) {
             String elmtName = operation + (request ? "Request" : "Response");
             LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
             parts.add(new OMessageVarType.Part(_oprocess, elmtName,
                     new OElementVarType(_oprocess, new QName(_processNS, elmtName))));
-            resolved.type = new OMessageVarType(_oprocess, new QName(_processNS, operation), parts); 
+            resolved.type = new OMessageVarType(_oprocess, new QName(_processNS, operation), parts);
+            typedVariables.add(name);
         }
         return resolved;
     }

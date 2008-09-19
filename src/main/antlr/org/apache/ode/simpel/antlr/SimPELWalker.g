@@ -9,7 +9,7 @@ tokens {
 }
 scope BPELScope { OScope oscope; }
 scope Parent { OBuilder.StructuredActivity activity; }
-scope ReceiveBlock { OPickReceive receive; }
+scope ReceiveBlock { OActivity activity; }
 scope ExprContext { SimPELExpr expr; }
 
 @header {
@@ -157,15 +157,19 @@ forall
 try_ex
 scope BPELScope;
 	:	^(TRY {
-      OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, null, $Parent::activity);
-      $BPELScope::oscope = oscope.getOActivity();
-    }
-    body catch_ex*);
+            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, null, $Parent::activity);
+            $BPELScope::oscope = oscope.getOActivity();
+        }
+        body catch_ex*);
 catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 
 scope_ex
 scope BPELScope;
-	:	^(SCOPE ID? body scope_stmt*);
+	:	^(SCOPE {
+            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, null, $Parent::activity);
+            $BPELScope::oscope = oscope.getOActivity();
+        }
+	    ID? body scope_stmt*);
 scope_stmt
 	:	event | alarm | compensation;
 
@@ -183,24 +187,31 @@ scope ExprContext;
 with_map:       ^(MAP ID path_expr);
 
 // Simple activities
-invoke	:	^(INVOKE p=ID o=ID in=ID?);
 
+invoke
+scope ReceiveBlock;
+        :	^(INVOKE ^(p=ID o=ID in=ID?)) {
+                OBuilder.StructuredActivity<OInvoke> inv = builder.build(OInvoke.class, $BPELScope::oscope,
+                    $Parent::activity, text($p), text($o), text($in));
+		        $ReceiveBlock::activity = inv.getOActivity();
+		    }
+            (prb=(param_block))?;
 
 reply	
   :	^(REPLY msg=ID (pl=ID var=ID)?) {
       if (ReceiveBlock_stack.size() > 0)
         builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
-			      $ReceiveBlock::receive, text($msg), text($pl), text($var));
+			      $ReceiveBlock::activity, text($msg), text($pl), text($var));
       else
         builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
 			      null, text($msg), text($pl), text($var));
     };
 receive	
 scope ReceiveBlock;
-	:	^(RECEIVE ^(p=ID o=ID correlation?)) { 
+	:	^(RECEIVE ^(p=ID o=ID correlation?)) {
             OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
                 $Parent::activity, text($p), text($o));
-		    $ReceiveBlock::receive = rec.getOActivity();
+		    $ReceiveBlock::activity = rec.getOActivity();
 		}
 		(prb=(param_block))?;
 
