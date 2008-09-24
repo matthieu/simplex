@@ -1,7 +1,7 @@
-namespace sref=" http://docs.oasis-open.org/wsbpel/2.0/serviceref";
-namespace addr="http://example.com/addressing";
+var sref = new Namespace("http://docs.oasis-open.org/wsbpel/2.0/serviceref");
+var addr = new Namespace("http://example.com/addressing");
 
-# Correlation functions
+// Correlation functions
 function auctionIdFromAnswer(answer) {
   answer.auctionId;
 }
@@ -12,13 +12,13 @@ function auctionIdFromSeller(seller) {
   seller.auctionId;
 }
 
-# Auction process as defined in chapter 15.4 of the BPEL 2.0 specification
+// Auction as defined in chapter 15.4 of the BPEL 2.0 specification
 process Auction {
   partnerLink buyerOrSeller, auctionRegistrar, seller;
   var auctionId unique, buyerData, sellerData;
 
-  # The original BPEL spec example for the auctions process uses a join pattern which
-  # we chose to not support in SimPEL. This is equivalent.
+  // The original BPEL spec example for the auctions process uses a join pattern which
+  // we chose to not support in SimPEL. This is equivalent.
   receive(buyerOrSeller, submit) { |startData|
     if (startData.buyer) {
       buyerData = startData;
@@ -31,7 +31,7 @@ process Auction {
     }
   }
 
-  # The endpoint hardcoded in the process is kind of evil but heck, that's the example.
+  // The endpoint hardcoded in the process is kind of evil but heck, that's the example.
   auctionRegistrar = <sref:service-ref>
                        <addr:EndpointReference>
                          <addr:Address>http://example.com/auction/RegistrationService/</addr:Address>

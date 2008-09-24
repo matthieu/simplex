@@ -8,8 +8,18 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.ContextFactory;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.serialize.ScriptableOutputStream;
+import org.mozilla.javascript.serialize.ScriptableInputStream;
 
 import javax.xml.namespace.QName;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ByteArrayInputStream;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
@@ -113,7 +123,7 @@ public class SimPELRuntimeTest extends TestCase {
     public void testInvokeOneWay() throws Exception {
         final Boolean[] received = new Boolean[] { false };
 
-        EmbeddedServer server = new  EmbeddedServer();
+        EmbeddedServer server = new EmbeddedServer();
         server.options.setMessageSender(new MessageSender() {
             public Node send(String recipient, String operation, Node message) {
                 if (recipient.equals("partnerPl") && operation.equals("partnerOp")
@@ -172,4 +182,42 @@ public class SimPELRuntimeTest extends TestCase {
         System.out.println(DOMUtils.domToString(result));
         assertEquals("10", result.getTextContent());
     }
+
+    private static final String JS_GLOBAL_STATE =
+            "var append = \" Yeeha!\"; \n" +
+            "function helloPrepend(p) { return \"Hello \" + p; }; \n" +
+            "\n" +
+            "process JsGlobalState {\n" +
+            "   receive(myPl, helloOp) { |msgIn|\n" +
+            "       msgOut = helloPrepend(msgIn) + append;\n" +
+            "       reply(msgOut);\n" +
+            "   }\n" +
+            "}";
+
+    public void testJSState() throws Exception {
+        EmbeddedServer server = new  EmbeddedServer();
+        server.start();
+        server.deploy(JS_GLOBAL_STATE);
+
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition/JsGlobalState", "helloOpRequest");
+        wrapper.setTextContent("World.");
+
+        Element result = server.sendMessage("myPl", "helloOp", wrapper);
+        System.out.println(":: " + DOMUtils.domToString(result));
+        assertTrue(DOMUtils.domToString(result).indexOf("Hello World. Yeeha!") > 0);
+    }
+
+    private static final String SIMPLE_CORRELATION =
+            "var append = \" Yeeha!\"; \n" +
+            "function getCounterId(msg) { return msg.counterId; }; \n" +
+            "\n" +
+            "process SimpleCorrelation {\n" +
+            "   var cid unique; \n" +
+            "   receive(myPl, helloOp) { |msgIn|\n" +
+            "       msgOut = helloPrepend(msgIn) + append;\n" +
+            "       reply(msgOut);\n" +
+            "   }\n" +
+            "}";
+
 }

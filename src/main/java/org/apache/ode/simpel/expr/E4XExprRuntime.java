@@ -11,6 +11,7 @@ import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
 import org.mozilla.javascript.Delegator;
 import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.serialize.ScriptableInputStream;
 import org.mozilla.javascript.xmlimpl.XMLLibImpl;
 import org.mozilla.javascript.xml.XMLLib;
 import org.mozilla.javascript.xml.XMLObject;
@@ -20,11 +21,17 @@ import org.w3c.dom.Element;
 
 import javax.xml.namespace.QName;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.io.ObjectInputStream;
+import java.io.ByteArrayInputStream;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class E4XExprRuntime implements ExpressionLanguageRuntime {
+
+    private static ConcurrentHashMap<Integer, Scriptable> globalStateCache = new ConcurrentHashMap<Integer, Scriptable>();
+
     public void initialize(Map map) throws ConfigurationException {
     }
 
@@ -32,13 +39,13 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         return null;
     }
 
-    public boolean evaluateAsBoolean(OExpression oExpression, EvaluationContext evaluationContext) throws FaultException {
+    public boolean evaluateAsBoolean(OExpression oexpr, EvaluationContext evaluationContext) throws FaultException {
         // TODO context caching
         Context cx = ContextFactory.getGlobal().enterContext();
-        ODEDelegator scope = new ODEDelegator(cx.initStandardObjects(), evaluationContext, (SimPELExpr)oExpression, cx);
+        ODEDelegator scope = new ODEDelegator(cx.initStandardObjects(), evaluationContext, (SimPELExpr)oexpr, cx);
 
         // First evaluating the assignment
-        SimPELExpr expr = (SimPELExpr) oExpression;
+        SimPELExpr expr = (SimPELExpr) oexpr;
         Object res = cx.evaluateString(scope, expr.getExpr(), "<expr>", 0, null);
         if (res instanceof Boolean) return (Boolean)res;
         else throw new FaultException(new QName("e4xEvalFailure"), "Failed to evaluate "
@@ -52,7 +59,27 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
     public List evaluate(OExpression oexpr, EvaluationContext evaluationContext) throws FaultException {
         // TODO context caching
         Context cx = ContextFactory.getGlobal().enterContext();
-        ODEDelegator scope = new ODEDelegator(cx.initStandardObjects(), evaluationContext, (SimPELExpr)oexpr, cx);
+        cx.setOptimizationLevel(-1);
+
+        Scriptable parentScope;
+        if (oexpr.getOwner().globalState != null) {
+            parentScope = globalStateCache.get(oexpr.getOwner().getId());
+            if (parentScope == null) {
+                Scriptable sharedScope = cx.initStandardObjects();
+                try {
+                    ObjectInputStream in = new ScriptableInputStream(new ByteArrayInputStream(oexpr.getOwner().globalState), sharedScope);
+                    parentScope = (Scriptable) in.readObject();
+                    in.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                globalStateCache.put(oexpr.getOwner().getId(), parentScope);
+            }
+        } else {
+            parentScope = cx.initStandardObjects();
+        }
+
+        ODEDelegator scope = new ODEDelegator(parentScope, evaluationContext, (SimPELExpr)oexpr, cx);
 
         // First evaluating the assignment
         SimPELExpr expr = (SimPELExpr) oexpr;

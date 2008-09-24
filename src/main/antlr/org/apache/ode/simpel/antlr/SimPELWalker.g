@@ -109,7 +109,6 @@ scope Parent;
 	:	^(SEQUENCE ID+
 		{ OBuilder.StructuredActivity seq = builder.build(OSequence.class, $BPELScope::oscope, $Parent[-1]::activity); 
 		  $Parent::activity = seq;
-		  //builder.setBlockParam($BPELScope::oscope, (OActivity) $Parent[-1]::activity.getOActivity(), $ID.text);
 		  builder.setBlockParam($BPELScope::oscope, (OSequence)seq.getOActivity(), $ID.text); 
 		}
 		proc_stmt+);
@@ -265,10 +264,10 @@ xmlMarkup
 	:	XML_COMMENT | XML_CDATA | XML_PI;
 
 // Expressions
-expr	:	s_expr | EXT_EXPR | funct_call;
+expr	:	s_expr | EXT_EXPR;
 
 funct_call
-	:	^(CALL ID*);
+	:	^(CALL ID expr*);
 path_expr
 	:	^(PATH ids=(ns_id*)) { 
         builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, deepText($ids));
@@ -285,4 +284,4 @@ s_expr	:	^('==' s_expr s_expr)
 	|	^('-' s_expr s_expr) 
 	|	^('*' s_expr s_expr) 
 	|	^('/' s_expr s_expr) 
-	|	path_expr | INT | STRING;
+	|	path_expr | INT | STRING | funct_call;

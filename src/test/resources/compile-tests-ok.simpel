@@ -183,8 +183,8 @@ process TryCatch {
 # Namespaces
 #
 
-namespace pns = "ns:process";
-namespace fns = "ns:fault";
+var pns = new Namespace("ns:process");
+var fns = new Namespace("ns:fault");
 
 process pns::NamespacesProcess {
   msg_in = receive(my_pl, start_op);
@@ -225,7 +225,7 @@ function orderId(orderMsg) {
 process SimpleCorrel {
   orderMsg = receive(my_pl, start_op);
 
-  # The correlation implies orderId(incoming_msg) == orderId(init_msg)
+  // The correlation implies orderId(incoming_msg) == orderId(init_msg)
   var oid unique;
   oid = orderId(orderMsg);
   receive(my_pl, corr_op, {orderId: oid});
@@ -251,8 +251,8 @@ function shipIdFromShippment(shipMsg) {
 process DoubleCorrel {
   orderMsg = receive(my_pl, start_op);
 
-  # The correlation implies orderIdFromShippment(incoming_msg) == orderIdFromOrder(order_msg)
-  # and shipIdFromShippment(incoming_msg) == shipIdFromOrder(order_msg),
+  // The correlation implies orderIdFromShippment(incoming_msg) == orderIdFromOrder(order_msg)
+  // and shipIdFromShippment(incoming_msg) == shipIdFromOrder(order_msg),
   var oid unique, shipId unique;
   oid = orderIdFromOrder(order_msg);
   shipId = shipIdFromOrder(order_msg);

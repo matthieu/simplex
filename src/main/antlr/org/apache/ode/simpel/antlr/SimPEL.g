@@ -187,16 +187,16 @@ corr_mapping
 funct	:	'function'^ f=ID '(' ID? (','! ID)* ')' js_block;
 
 // Expressions
-expr	:	s_expr | EXT_EXPR | funct_call;
+expr	:	s_expr | EXT_EXPR;
 
 funct_call
-	:	p+=ID '(' p+=ID* ')' -> ^(CALL ID+);
+	    :	fn=ID '(' (e+=expr)? (',' e+=expr)* ')' -> ^(CALL ID $e*);
 // TODO add && || !
 s_expr	:	condExpr;
 condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
 mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
-atom	:	path_expr | INT | '(' s_expr ')' -> s_expr;
+atom	:	path_expr | INT | '(' s_expr ')' -> s_expr | funct_call;
 path_expr
 	:	pelmt+=ns_id ('.' pelmt+=ns_id)* -> ^(PATH $pelmt);
 
@@ -228,7 +228,7 @@ ESCAPE_SEQ
 	:	'\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\');
 
 SL_COMMENTS
-	:	('#'|'//') .* CR { $channel = HIDDEN; };
+	:	'//' .* CR { $channel = HIDDEN; };
 CR	:	('\r' | '\n' )+ { $channel = HIDDEN; };
 WS	:	( ' ' | '\t' )+ { skip(); };
 fragment DIGIT

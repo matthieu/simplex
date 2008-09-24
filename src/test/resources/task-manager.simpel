@@ -1,5 +1,5 @@
-namespace b4p = "http://tempo.intalio.org/workflow/ib4p_20051115";
-namespace tms = "http://tempo.intalio.org/workflow/TaskManagementServices-20051109/";
+var b4p = new Namespace("http://tempo.intalio.org/workflow/ib4p_20051115");
+var tms = new Namespace("http://tempo.intalio.org/workflow/TaskManagementServices-20051109/");
 
 function taskIdFromB4P(c) {
   return c.b4p::taskMetaData.b4p::taskId;

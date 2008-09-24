@@ -11,13 +11,19 @@ import org.apache.ode.simpel.antlr.SimPELLexer;
 import org.apache.ode.simpel.antlr.SimPELParser;
 import org.apache.ode.simpel.antlr.SimPELWalker;
 import org.apache.ode.simpel.util.DefaultErrorListener;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.serialize.ScriptableOutputStream;
 import uk.co.badgersinfoil.e4x.antlr.*;
 
 import java.io.StringReader;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class SimPELCompiler {
 
@@ -31,10 +37,49 @@ public class SimPELCompiler {
         this.el = el;
     }
 
-    public OProcess compileProcess(String process) {
+    public OProcess compileProcess(String processDoc) {
+        // Isolating the process definition from the header containing global state definition (Javascript
+        // functions and shared objects)
+        Pattern p = Pattern.compile("process [a-zA-Z_]*", Pattern.MULTILINE);
+        Matcher m = p.matcher(processDoc);
+        if (!m.find()) throw new CompilationException("Couldn't find any process declaration.");
+        String header = processDoc.substring(0, m.start());
+        String processDef = processDoc.substring(m.start(), processDoc.length());
+
+        OProcess model = buildModel(processDef);
+        if (header.trim().length() > 0)
+            model.globalState = buildGlobalState(header);
+        return model;
+    }
+
+    private byte[] buildGlobalState(String header) {
+        Context cx = Context.enter();
+        cx.setOptimizationLevel(-1);
+        Scriptable sharedScope = cx.initStandardObjects();
+
+        Scriptable newScope = cx.newObject(sharedScope);
+        newScope.setPrototype(sharedScope);
+        newScope.setParentScope(null);
+
+        cx.evaluateString(newScope, header, "<cmd>", 1, null);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ScriptableOutputStream out = null;
+        try {
+            out = new ScriptableOutputStream(baos, sharedScope);
+            out.writeObject(newScope);
+            out.close();
+        } catch (IOException e) {
+            throw new CompilationException("Error when interpreting definitions in the process header.", e);
+        }
+
+        return baos.toByteArray();
+    }
+
+    private OProcess buildModel(String processDef) {
         ANTLRReaderStream charstream = null;
         try {
-            charstream = new ANTLRReaderStream(new StringReader(process));
+            charstream = new ANTLRReaderStream(new StringReader(processDef));
         } catch (IOException e) {
             throw new CompilationException("Unable to read process string.", e);
         }

@@ -207,12 +207,11 @@ public class OBuilder extends BaseCompiler {
     public void setBlockParam(OScope oscope, OSequence blockActivity, String varName) {
         // The AST for block activities is something like:
         //    (SEQUENCE (activity) (SEQUENCE varIds otherActivities))
-        // The parent here is the first sequence so we just set the varIds on its first child activity
+        // The blockActivity here is the second sequence so we just set the varIds on the previous activity
         if (blockActivity == null || !(blockActivity instanceof OSequence)) {
             __log.warn("Can't set block parameter with block parent activity " + blockActivity);
             return;
         }
-//        OActivity oact = ((OSequence)blockActivity).sequence.get(0);
         List<OActivity> parentList = ((OSequence)blockActivity.getParent()).sequence;
         OActivity oact = parentList.get(parentList.indexOf(blockActivity) - 1);
         if (oact instanceof OPickReceive) {

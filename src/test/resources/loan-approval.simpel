@@ -1,7 +1,7 @@
-namespace lns = "http://example.com/loan-approval/wsdl/";
-namespace pns = "http://example.com/loan-approval";
+var lns = new Namespace("http://example.com/loan-approval/wsdl/");
+var pns = new Namespace("http://example.com/loan-approval");
 
-# Loan approval process as defined in chapter 15.3 of the BPEL 2.0 specification
+// Loan approval as defined in chapter 15.3 of the BPEL 2.0 specification
 process pns::LoanApproval {
   partnerLink customer, assessor, approver;
   try {
