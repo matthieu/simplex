@@ -43,7 +43,7 @@ ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao",
                             "ode-engine", "ode-il-common", "ode-jacob", "ode-scheduler-simple", 
                             "ode-utils", :under=>"org.apache.ode", :version=>"1.3-SNAPSHOT")
 WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"
-XERCES              = "xerces:xercesImpl:jar:2.9.0"
+XERCES              = "xerces:xercesImpl:jar:2.8.1"
 
 repositories.remote << "http://repo1.maven.org/maven2"
 repositories.remote << "http://people.apache.org/~mriou/ode-1.2RC1/"

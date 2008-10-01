@@ -6,11 +6,14 @@ import org.apache.ode.bpel.compiler.v2.BaseCompiler;
 import org.apache.ode.bpel.rtrep.v2.*;
 
 import org.apache.ode.bpel.compiler.bom.Bpel20QNames;
+import org.apache.ode.bpel.rapi.PropertyExtractor;
 import org.apache.ode.simpel.wsdl.SimPELInput;
 import org.apache.ode.simpel.wsdl.SimPELOperation;
 import org.apache.ode.simpel.wsdl.SimPELOutput;
 import org.apache.ode.simpel.wsdl.SimPELPortType;
 import org.apache.ode.utils.GUID;
+import org.w3c.dom.Node;
+import org.w3c.dom.Document;
 
 import javax.wsdl.PortType;
 import javax.wsdl.Part;
@@ -24,6 +27,7 @@ import java.util.*;
  * TODO allow javascript blocks instead of just hooking on equal, otherwise you can't do stuff like
  *          operations.appendChild(<operand>2</operand>);
  *          operations.appendChild(<operand>3</operand>);
+ * TODO support generic variable declarations that aren't mapped to a property (unique)
  */
 public class OBuilder extends BaseCompiler {
     private static final Logger __log = Logger.getLogger(OBuilder.class);
@@ -104,7 +108,7 @@ public class OBuilder extends BaseCompiler {
 
         final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
-        _oprocess.procesScope = processScope;
+        _oprocess.processScope = processScope;
         return buildScope(processScope, null);
     }
 
@@ -177,7 +181,8 @@ public class OBuilder extends BaseCompiler {
         String lvar = lexpr.split("\\.")[0];
         vref.variable = resolveVariable(oscope, lvar);
         // Don't worry, it's all type safe, therefore it's correct
-        vref.part = ((OMessageVarType)vref.variable.type).parts.values().iterator().next();
+        if (vref.variable.type instanceof OMessageVarType)
+            vref.part = ((OMessageVarType)vref.variable.type).parts.values().iterator().next();
         ocopy.to = vref;
 
         rexpr.setLValue(lexpr);
@@ -188,7 +193,7 @@ public class OBuilder extends BaseCompiler {
     }
 
     public SimpleActivity buildReply(OReply oreply, OScope oscope, OPickReceive oreceive,
-                             String var, String partnerLink, String operation) {
+                                     String var, String partnerLink, String operation) {
         oreply.variable = resolveVariable(oscope, var, operation, false);
         if (partnerLink == null) {
             if (oreceive == null) throw new RuntimeException("No parent receive but reply with var " + var +
@@ -198,7 +203,7 @@ public class OBuilder extends BaseCompiler {
             buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), true, false);
         } else {
             oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, false);
-            oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null); 
+            oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null);
         }
         // Adding partner role
         return new SimpleActivity<OReply>(oreply);
@@ -208,7 +213,7 @@ public class OBuilder extends BaseCompiler {
         // The AST for block activities is something like:
         //    (SEQUENCE (activity) (SEQUENCE varIds otherActivities))
         // The blockActivity here is the second sequence so we just set the varIds on the previous activity
-        if (blockActivity == null || !(blockActivity instanceof OSequence)) {
+        if (blockActivity == null) {
             __log.warn("Can't set block parameter with block parent activity " + blockActivity);
             return;
         }
@@ -217,6 +222,12 @@ public class OBuilder extends BaseCompiler {
         if (oact instanceof OPickReceive) {
             OPickReceive.OnMessage rec = ((OPickReceive)oact).onMessages.get(0);
             rec.variable = resolveVariable(oscope, varName, rec.operation.getName(), true);
+            if (rec.matchCorrelation != null) {
+                // Setting the message variable type associated with the correlation expression
+                for (PropertyExtractor extractor : rec.matchCorrelation.getExtractors()) {
+                    ((SimPELExpr)extractor).getReferencedVariable(extractor.getMessageVariableName()).type = rec.variable.type;
+                }
+            }
         } else if (oact instanceof OInvoke) {
             OInvoke inv = (OInvoke)oact;
             inv.outputVar = resolveVariable(oscope, varName, inv.operation.getName(), false);
@@ -231,6 +242,50 @@ public class OBuilder extends BaseCompiler {
             return;
         }
         expr.addVariable(resolveVariable(oscope, varName));
+    }
+
+    public void addVariableDecl(String varName, String modifiers) {
+        if (variables.get(varName) != null)
+            throw new RuntimeException("Duplicate definition of variable " + varName);
+
+        if (modifiers.indexOf("unique") >= 0) {
+            OProcess.OProperty oproperty = new OProcess.OProperty(_oprocess);
+            oproperty.name = new QName(varName);
+            _oprocess.properties.add(oproperty);
+
+            OPropertyVarType propType = new OPropertyVarType(_oprocess);
+            OScope.Variable propVar = new OScope.Variable(_oprocess, propType);
+            propVar.name = varName;
+            propVar.declaringScope = _oprocess.processScope;
+            variables.put(varName, propVar);
+
+            // TODO get rid of this dummy correlation set, we should be able to access properties directly
+            OScope.CorrelationSet set = new OScope.CorrelationSet(_oprocess);
+            set.name = varName;                    
+            set.properties.add(oproperty);
+            set.declaringScope = _oprocess.processScope;
+            _oprocess.processScope.addCorrelationSet(set);
+        }
+    }
+
+    public void addCorrelationMatch(OActivity receive, List match) {
+        // TODO multiple values match
+        OScope.CorrelationSet cset = _oprocess.processScope.getCorrelationSet((String) match.get(1));
+        OPickReceive.OnMessage rec = ((OPickReceive)receive).onMessages.get(0);
+
+        // Creating an expression that will return the correlation value by applying the correlation
+        // function to the input variable (bound to __msg__)
+        OScope.Variable msgVar = new OScope.Variable(_oprocess, null);
+        msgVar.name = "__msg" + rec.getId() + "__";
+        msgVar.declaringScope = _oprocess.processScope;
+        SimPELExpr expr = new SimPELExpr(_oprocess);
+        expr.setExpr(match.get(0) + "(" + msgVar.name + ")");
+        expr.addVariable(msgVar);
+        expr.expressionLanguage = _exprLang;
+        cset.extractors.add(expr);
+
+        rec.matchCorrelation = cset;
+        rec.partnerLink.addCorrelationSetForOperation(rec.operation, cset);
     }
 
     public OProcess getProcess() {
@@ -309,11 +364,6 @@ public class OBuilder extends BaseCompiler {
             part.type = new OElementVarType(_oprocess, new QName(_processNS, elmtName));
             varType.parts.clear();
             varType.parts.put(part.name, part);
-//
-//            LinkedList<OMessageVarType.Part> parts = new LinkedList<OMessageVarType.Part>();
-//            parts.add(new OMessageVarType.Part(_oprocess, elmtName,
-//                    new OElementVarType(_oprocess, new QName(_processNS, elmtName))));
-//            resolved.type = new OMessageVarType(_oprocess, new QName(_processNS, operation), parts);
             typedVariables.add(name);
         }
         return resolved;

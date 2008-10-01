@@ -209,15 +209,43 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String SIMPLE_CORRELATION =
-            "var append = \" Yeeha!\"; \n" +
-            "function getCounterId(msg) { return msg.counterId; }; \n" +
+            "function getExchangeId(msg) { return msg.id; }; \n" +
             "\n" +
-            "process SimpleCorrelation {\n" +
+            "process SimpleCorrelation { \n" +
             "   var cid unique; \n" +
-            "   receive(myPl, helloOp) { |msgIn|\n" +
-            "       msgOut = helloPrepend(msgIn) + append;\n" +
-            "       reply(msgOut);\n" +
+            "   receive(myPl, firstOp) { |msgIn| \n" +
+            "       cid = msgIn.id; \n" +
+            "       text = msgIn.text; \n" +
+            "   }\n" +
+            "   receive(myPl, secondOp, {getExchangeId: cid}) { |secMsgIn| \n" +
+            "       text = text + secMsgIn.text; \n" +
+            "       reply(text); \n" +
             "   }\n" +
             "}";
+
+    public void testSimpleCorrelation() throws Exception {
+        EmbeddedServer server = new  EmbeddedServer();
+        server.start();
+        server.deploy(SIMPLE_CORRELATION);
+
+        Element wrapper = DOMUtils.stringToDOM(
+                "<xd:firstOpRequest xmlns:xd=\"http://ode.apache.org/simpel/1.0/definition/SimpleCorrelation\">" +
+                    "<exchange>" +
+                        "<id>XYZ1</id>" +
+                        "<text>foo</text>" +
+                    "</exchange>" +
+                "</xd:firstOpRequest>");
+        server.sendMessage("myPl", "firstOp", wrapper);
+
+        wrapper = DOMUtils.stringToDOM(
+                "<xd:secondOpRequest xmlns:xd=\"http://ode.apache.org/simpel/1.0/definition/SimpleCorrelation\">" +
+                    "<exchange>" +
+                        "<id>XYZ1</id>" +
+                        "<text>bar</text>" +
+                    "</exchange>" +
+                "</xd:secondOpRequest>");
+        Element result = server.sendMessage("myPl", "secondOp", wrapper);
+        assertTrue(DOMUtils.domToString(result).indexOf("foobar") > 0);
+    }
 
 }

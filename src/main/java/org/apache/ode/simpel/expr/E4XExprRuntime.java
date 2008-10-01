@@ -83,11 +83,14 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
         // First evaluating the assignment
         SimPELExpr expr = (SimPELExpr) oexpr;
-        String forged = expr.getLValue() + " = " + expr.getExpr();
+        String forged = expr.getExpr();
+        if (expr.getLValue() != null)
+            forged = expr.getLValue() + " = " + expr.getExpr();
 
-        cx.evaluateString(scope, forged, "<expr>", 0, null);
+        Object res = cx.evaluateString(scope, forged, "<expr>", 0, null);
         // Second extracting the resulting variable value
-        Object res = scope.getEnv().get(expr.getLVariable());
+        if (expr.getLValue() != null)
+            res = scope.getEnv().get(expr.getLVariable());
 
         ArrayList<Node> resList = new ArrayList<Node>(1);
         if (res instanceof String || res instanceof Number) {
@@ -119,7 +122,7 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
     }
 
     public Node evaluateNode(OExpression oExpression, EvaluationContext evaluationContext) throws FaultException {
-        return null;
+        return (Node) evaluate(oExpression, evaluationContext).get(0);
     }
 
     private class ODEDelegator extends Delegator  {
@@ -145,11 +148,19 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 OScope.Variable v = _expr.getReferencedVariable(name);
                 if (v == null) return super.get(name, start);
 
+                // Handling of variables pointing to property values
+                if (v.type instanceof OPropertyVarType) {
+                    System.out.println("Property value access.");
+                }
+
                 if (_env.get(name) != null) return _env.get(name);
                 // TODO this assumes message type with a single part for all variables, valid?
                 Node node;
                 try {
-                    node = _evaluationContext.readVariable(v,((OMessageVarType)v.type).parts.values().iterator().next());
+                    if (v.type instanceof OMessageVarType)
+                        node = _evaluationContext.readVariable(v,((OMessageVarType)v.type).parts.values().iterator().next());
+                    else
+                        node = _evaluationContext.readVariable(v, null);
                 } catch (FaultException e) {
                     if (e.getQName().getLocalPart().equals("uninitializedVariable")) return super.get(name, start);
                     else throw e;
@@ -182,7 +193,10 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
             Node node;
             try {
-                node = _evaluationContext.readVariable(v,((OMessageVarType)v.type).parts.values().iterator().next());
+                if (v.type instanceof OMessageVarType)
+                    node = _evaluationContext.readVariable(v,((OMessageVarType)v.type).parts.values().iterator().next());
+                else
+                    node = _evaluationContext.readVariable(v, null);
             } catch (FaultException e) {
                 return false;
             }

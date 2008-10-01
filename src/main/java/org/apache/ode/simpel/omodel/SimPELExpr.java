@@ -1,13 +1,14 @@
 package org.apache.ode.simpel.omodel;
 
 import org.apache.ode.bpel.rtrep.v2.*;
+import org.apache.ode.bpel.rapi.PropertyExtractor;
 
 import java.util.HashMap;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
  */
-public class SimPELExpr extends OExpression {
+public class SimPELExpr extends OExpression implements PropertyExtractor {
     private String expr;
     private String lvalue;
     private String lvariable;
@@ -51,5 +52,11 @@ public class SimPELExpr extends OExpression {
 
     public String toString() {
         return expr;
+    }
+
+    public String getMessageVariableName() {
+        // Special case of a correlation match expression, the expression only references
+        // a single variable bound to the incoming message.
+        return _referencedVariables.keySet().iterator().next();
     }
 }

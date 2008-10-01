@@ -190,12 +190,12 @@ with_map:       ^(MAP ID path_expr);
 
 invoke
 scope ReceiveBlock;
-        :	^(INVOKE ^(p=ID o=ID in=ID?)) {
-                OBuilder.StructuredActivity<OInvoke> inv = builder.build(OInvoke.class, $BPELScope::oscope,
-                    $Parent::activity, text($p), text($o), text($in));
-		        $ReceiveBlock::activity = inv.getOActivity();
-		    }
-            (prb=(param_block))?;
+    :	^(INVOKE ^(p=ID o=ID in=ID?)) {
+            OBuilder.StructuredActivity<OInvoke> inv = builder.build(OInvoke.class, $BPELScope::oscope,
+                $Parent::activity, text($p), text($o), text($in));
+            $ReceiveBlock::activity = inv.getOActivity();
+        }
+        (prb=(param_block))?;
 
 reply	
   :	^(REPLY msg=ID (pl=ID var=ID)?) {
@@ -208,11 +208,11 @@ reply
     };
 receive	
 scope ReceiveBlock;
-	:	^(RECEIVE ^(p=ID o=ID correlation?)) {
+	:	^(RECEIVE ^(p=ID o=ID {
             OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
                 $Parent::activity, text($p), text($o));
 		    $ReceiveBlock::activity = rec.getOActivity();
-		}
+		} correlation?))
 		(prb=(param_block))?;
 
 assign	
@@ -237,19 +237,22 @@ wait_ex	:	^(WAIT expr);
 exit	:	EXIT;
 
 // Other
-variable:	^(VARIABLE ID VAR_MODS*);
+variable:	^(VARIABLE ID VAR_MODS*) { builder.addVariableDecl(text($ID), text($VAR_MODS)); };
 
 partner_link
 	:	^(PARTNERLINK ID*);
 
 correlation
-scope ExprContext;
-	:	^(CORRELATION { 
-        $ExprContext::expr = new SimPELExpr(builder.getProcess());
-    }
-    corr_mapping*);
+	:	^(CORRELATION (corr_mapping {
+	        builder.addCorrelationMatch($ReceiveBlock::activity, $corr_mapping.corr); 
+	    } )*);
 corr_mapping
-	:	^(CORR_MAP ID expr);
+returns [List corr]
+	:	^(CORR_MAP fn=ID var=ID) {
+	        corr = new ArrayList(2);
+	        corr.add(deepText($fn));
+	        corr.add(deepText($var));
+	    };
 
 // XML
 xmlElement

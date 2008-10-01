@@ -182,7 +182,7 @@ partner_link
 correlation
 	:	'{' corr_mapping (',' corr_mapping)* '}' -> ^(CORRELATION corr_mapping*);
 corr_mapping
-	:	f1=ID ':' expr -> ^(CORR_MAP $f1 expr);
+	:	fn=ID ':' var=ID -> ^(CORR_MAP $fn $var);
 
 funct	:	'function'^ f=ID '(' ID? (','! ID)* ')' js_block;
 
