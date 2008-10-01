@@ -247,6 +247,7 @@ public class OBuilder extends BaseCompiler {
     public void addVariableDecl(String varName, String modifiers) {
         if (variables.get(varName) != null)
             throw new RuntimeException("Duplicate definition of variable " + varName);
+        if (modifiers == null) return;
 
         if (modifiers.indexOf("unique") >= 0) {
             OProcess.OProperty oproperty = new OProcess.OProperty(_oprocess);
@@ -258,6 +259,7 @@ public class OBuilder extends BaseCompiler {
             propVar.name = varName;
             propVar.declaringScope = _oprocess.processScope;
             variables.put(varName, propVar);
+            typedVariables.add(varName);
 
             // TODO get rid of this dummy correlation set, we should be able to access properties directly
             OScope.CorrelationSet set = new OScope.CorrelationSet(_oprocess);

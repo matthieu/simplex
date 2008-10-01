@@ -14,11 +14,10 @@ import org.apache.ode.simpel.util.DefaultErrorListener;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.serialize.ScriptableOutputStream;
+import org.mozilla.javascript.serialize.ScriptableInputStream;
 import uk.co.badgersinfoil.e4x.antlr.*;
 
-import java.io.StringReader;
-import java.io.IOException;
-import java.io.ByteArrayOutputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;

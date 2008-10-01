@@ -30,7 +30,7 @@ import java.io.ByteArrayInputStream;
  */
 public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
-    private static ConcurrentHashMap<Integer, Scriptable> globalStateCache = new ConcurrentHashMap<Integer, Scriptable>();
+    private static ConcurrentHashMap<String, Scriptable> globalStateCache = new ConcurrentHashMap<String, Scriptable>();
 
     public void initialize(Map map) throws ConfigurationException {
     }
@@ -63,7 +63,7 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
         Scriptable parentScope;
         if (oexpr.getOwner().globalState != null) {
-            parentScope = globalStateCache.get(oexpr.getOwner().getId());
+            parentScope = globalStateCache.get(oexpr.getOwner().getGuid());
             if (parentScope == null) {
                 Scriptable sharedScope = cx.initStandardObjects();
                 try {
@@ -73,7 +73,7 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                globalStateCache.put(oexpr.getOwner().getId(), parentScope);
+                globalStateCache.put(oexpr.getOwner().getGuid(), parentScope);
             }
         } else {
             parentScope = cx.initStandardObjects();
