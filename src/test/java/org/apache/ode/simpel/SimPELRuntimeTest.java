@@ -218,7 +218,7 @@ public class SimPELRuntimeTest extends TestCase {
             "       text = msgIn.text; \n" +
             "   }\n" +
             "   receive(myPl, secondOp, {getExchangeId: cid}) { |secMsgIn| \n" +
-            "       text = text + secMsgIn.text; \n" +
+            "       text = text + secMsgIn.text + cid; \n" +
             "       reply(text); \n" +
             "   }\n" +
             "}";

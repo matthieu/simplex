@@ -148,12 +148,8 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 OScope.Variable v = _expr.getReferencedVariable(name);
                 if (v == null) return super.get(name, start);
 
-                // Handling of variables pointing to property values
-                if (v.type instanceof OPropertyVarType) {
-                    System.out.println("Property value access.");
-                }
-
                 if (_env.get(name) != null) return _env.get(name);
+
                 // TODO this assumes message type with a single part for all variables, valid?
                 Node node;
                 try {

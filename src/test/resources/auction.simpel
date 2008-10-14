@@ -3,19 +3,19 @@ var addr = new Namespace("http://example.com/addressing");
 
 // Correlation functions
 function auctionIdFromAnswer(answer) {
-  answer.auctionId;
+  return answer.auctionId;
 }
 function auctionIdFromBuyer(buyer) {
-  buyer.ID;
+  return buyer.ID;
 }
 function auctionIdFromSeller(seller) {
-  seller.auctionId;
+  return seller.auctionId;
 }
 
 // Auction as defined in chapter 15.4 of the BPEL 2.0 specification
 process Auction {
   partnerLink buyerOrSeller, auctionRegistrar, seller;
-  var auctionId unique, buyerData, sellerData;
+  var auctionId unique;
 
   // The original BPEL spec example for the auctions process uses a join pattern which
   // we chose to not support in SimPEL. This is equivalent.
@@ -38,7 +38,7 @@ process Auction {
                          <addr:ServiceName>as:RegistrationService</addr:ServiceName>
                        </addr:EndpointReference>
                      </sref:service-ref>;
-  auctionData.auctionHouseEPR = auctionRegistrar.myRole;
+  auctionData.auctionHouseEPR = auctionRegistrar;
   auctionData.auctionId = sellerData.auctionId;
   auctionData.amount = 1;
 
