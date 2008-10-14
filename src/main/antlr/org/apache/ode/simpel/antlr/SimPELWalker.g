@@ -139,11 +139,16 @@ scope ExprContext Parent;
     (^(ELSE b2=(body)))?);
 
 while_ex
-scope ExprContext;
+scope ExprContext Parent;
 	:	^(WHILE {
         $ExprContext::expr = new SimPELExpr(builder.getProcess());
     }
-    expr body);
+    e=(expr) {
+        $ExprContext::expr.setExpr(deepText($e));
+        OBuilder.StructuredActivity<OWhile> owhile = builder.build(OWhile.class, $BPELScope::oscope, $Parent[-1]::activity, $ExprContext::expr);
+        $Parent::activity = owhile;
+    }
+    body);
 
 until_ex
 scope ExprContext;

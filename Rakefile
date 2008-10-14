@@ -70,8 +70,10 @@ define "simpel" do
     walker_txt = File.read(walker)
 
     patch_walker = lambda do |regx, offset, txt|
-      insrt_idx = walker_txt.index(regx)
-      walker_txt.insert(insrt_idx + offset, txt)
+      insrt_idx = 0
+      while (insrt_idx = walker_txt.index(regx, insrt_idx+1)) do
+        walker_txt.insert(insrt_idx + offset, txt)
+      end
     end
     patch_walker[/SimPELWalker.g(.*)ns_id$/, 51, "ids = (LinkedListTree)input.LT(1);"]
     patch_walker[/SimPELWalker.g(.*) \( path_expr \)$/, 37, "lv = (LinkedListTree)input.LT(1);"]

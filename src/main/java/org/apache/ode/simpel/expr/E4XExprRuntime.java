@@ -42,7 +42,10 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
     public boolean evaluateAsBoolean(OExpression oexpr, EvaluationContext evaluationContext) throws FaultException {
         // TODO context caching
         Context cx = ContextFactory.getGlobal().enterContext();
-        ODEDelegator scope = new ODEDelegator(cx.initStandardObjects(), evaluationContext, (SimPELExpr)oexpr, cx);
+        cx.setOptimizationLevel(-1);
+
+        Scriptable parentScope = getScope(cx, oexpr);
+        ODEDelegator scope = new ODEDelegator(parentScope, evaluationContext, (SimPELExpr)oexpr, cx);
 
         // First evaluating the assignment
         SimPELExpr expr = (SimPELExpr) oexpr;
@@ -61,24 +64,7 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         Context cx = ContextFactory.getGlobal().enterContext();
         cx.setOptimizationLevel(-1);
 
-        Scriptable parentScope;
-        if (oexpr.getOwner().globalState != null) {
-            parentScope = globalStateCache.get(oexpr.getOwner().getGuid());
-            if (parentScope == null) {
-                Scriptable sharedScope = cx.initStandardObjects();
-                try {
-                    ObjectInputStream in = new ScriptableInputStream(new ByteArrayInputStream(oexpr.getOwner().globalState), sharedScope);
-                    parentScope = (Scriptable) in.readObject();
-                    in.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                globalStateCache.put(oexpr.getOwner().getGuid(), parentScope);
-            }
-        } else {
-            parentScope = cx.initStandardObjects();
-        }
-
+        Scriptable parentScope = getScope(cx, oexpr);
         ODEDelegator scope = new ODEDelegator(parentScope, evaluationContext, (SimPELExpr)oexpr, cx);
 
         // First evaluating the assignment
@@ -89,8 +75,13 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
         Object res = cx.evaluateString(scope, forged, "<expr>", 0, null);
         // Second extracting the resulting variable value
-        if (expr.getLValue() != null)
+        if (expr.getLValue() != null) {
             res = scope.getEnv().get(expr.getLVariable());
+            OVarType varType = expr.getReferencedVariable(expr.getLVariable()).type;
+            // Setting variables runtime type
+            if (res instanceof String) varType.underlyingType = OVarType.STRING_TYPE;
+            if (res instanceof Number) varType.underlyingType = OVarType.NUMBER_TYPE;
+        }
 
         ArrayList<Node> resList = new ArrayList<Node>(1);
         if (res instanceof String || res instanceof Number) {
@@ -150,9 +141,9 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
                 if (_env.get(name) != null) return _env.get(name);
 
-                // TODO this assumes message type with a single part for all variables, valid?
                 Node node;
                 try {
+                    // This assumes message type with a single part
                     if (v.type instanceof OMessageVarType)
                         node = _evaluationContext.readVariable(v,((OMessageVarType)v.type).parts.values().iterator().next());
                     else
@@ -162,10 +153,19 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                     else throw e;
                 }
                 // Simple types
-                if (node.getNodeValue() != null) return node.getNodeValue();
-                else if (node.getNodeType() == Node.ELEMENT_NODE) {
+                // TODO I think the sumple type case never exists anymore (stuff get wrapped), remove this
+                if (node.getNodeValue() != null) {
+                    String rawValue = node.getNodeValue();
+                    if (v.type.underlyingType == OVarType.SCHEMA_TYPE || v.type.underlyingType == OVarType.STRING_TYPE)
+                        return rawValue;
+                    if (v.type.underlyingType == OVarType.NUMBER_TYPE) return Double.valueOf(rawValue);
+                } else if (node.getNodeType() == Node.ELEMENT_NODE) {
                     Element nodeElmt = (Element) node;
-                    if (DOMUtils.getFirstChildElement(nodeElmt) == null) return nodeElmt.getTextContent();
+                    if (DOMUtils.getFirstChildElement(nodeElmt) == null) {
+                        String rawValue = nodeElmt.getTextContent();
+                        if (v.type.underlyingType == OVarType.NUMBER_TYPE) return Double.valueOf(rawValue);
+                        else return rawValue;
+                    }
                     else node = DOMUtils.getFirstChildElement((Element)node);
                 }
 
@@ -211,6 +211,27 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         public Scriptable getObj() {
             return obj;
         }
+    }
+
+    public Scriptable getScope(Context cx, OExpression oexpr) {
+        Scriptable parentScope;
+        if (oexpr.getOwner().globalState != null) {
+            parentScope = globalStateCache.get(oexpr.getOwner().getGuid());
+            if (parentScope == null) {
+                Scriptable sharedScope = cx.initStandardObjects();
+                try {
+                    ObjectInputStream in = new ScriptableInputStream(new ByteArrayInputStream(oexpr.getOwner().globalState), sharedScope);
+                    parentScope = (Scriptable) in.readObject();
+                    in.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                globalStateCache.put(oexpr.getOwner().getGuid(), parentScope);
+            }
+        } else {
+            parentScope = cx.initStandardObjects();
+        }
+        return parentScope;
     }
 
     // Can someone tell me why I have to implement this? The Java API just sucks.

@@ -139,6 +139,16 @@ public class OBuilder extends BaseCompiler {
         };
     }
 
+    public StructuredActivity<OWhile> buildWhile(final OWhile owhile, OScope parentScope, SimPELExpr whileExpr) {
+        owhile.whileCondition = whileExpr;
+        owhile.whileCondition.expressionLanguage = _exprLang;
+        return new StructuredActivity<OWhile>(owhile) {
+            public void run(OActivity child) {
+                owhile.activity = child;
+            }
+        };
+    }
+
     public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLink, String operation) {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
         onMessage.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, true);

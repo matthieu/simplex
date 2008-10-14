@@ -248,4 +248,29 @@ public class SimPELRuntimeTest extends TestCase {
         assertTrue(DOMUtils.domToString(result).indexOf("foobar") > 0);
     }
 
+    private static final String WHILE_LOOP =
+            "process WhileLoop { \n" +
+            "   receive(myPl, firstOp) { |counter| \n" +
+            "       i = 0; j = 1; cur = 1; \n" +
+            "       while (cur <= counter) { \n" +
+            "           k = i; i = j; j = k+j; cur = cur+1; \n" +
+            "       } \n" +
+            "       reply(i); \n" +
+            "   }\n" +
+            "}";
+
+    public void testWhile() throws Exception {
+        EmbeddedServer server = new  EmbeddedServer();
+        server.start();
+        server.deploy(WHILE_LOOP);
+
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition/WhileLoop", "firstOpRequest");
+        wrapper.setTextContent("20");
+
+        Element result = server.sendMessage("myPl", "firstOp", wrapper);
+        System.out.println(":: " + DOMUtils.domToString(result));
+        assertTrue(DOMUtils.domToString(result).indexOf("6765") > 0);
+    }
+
 }
