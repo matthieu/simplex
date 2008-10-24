@@ -25,6 +25,7 @@ import org.apache.ode.bpel.evt.BpelEvent;
 import org.apache.ode.bpel.iapi.*;
 import org.apache.ode.bpel.rapi.PartnerLinkModel;
 import org.apache.ode.bpel.rapi.Serializer;
+import org.apache.ode.bpel.rapi.ProcessModel;
 import org.apache.ode.simpel.SimPELCompiler;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
@@ -143,6 +144,10 @@ public class EmbeddedStore implements ProcessStore {
             return true;
         }
 
+        public boolean isRestful() {
+            return getProvideEndpoints().size() == 0;
+        }
+
         public InputStream getCBPInputStream() {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             Serializer fileHeader = new Serializer(System.currentTimeMillis());
@@ -152,6 +157,10 @@ public class EmbeddedStore implements ProcessStore {
                 throw new RuntimeException("Failed to serialize compiled OProcess!", e);
             }
             return new ByteArrayInputStream(baos.toByteArray());
+        }
+
+        public ProcessModel getProcessModel() {
+            return _oprocess;
         }
 
         public String getBpelDocument() {

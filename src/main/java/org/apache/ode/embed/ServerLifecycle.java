@@ -3,6 +3,7 @@ package org.apache.ode.embed;
 import org.apache.log4j.Logger;
 import org.apache.ode.EmbeddedServer;
 import org.apache.ode.Options;
+import org.apache.ode.rest.EngineWebResource;
 import org.apache.ode.embed.messaging.BindingContextImpl;
 import org.apache.ode.embed.messaging.MessageExchangeContextImpl;
 import org.apache.ode.bpel.dao.BpelDAOConnectionFactory;
@@ -30,7 +31,7 @@ import java.util.concurrent.Executors;
 /**
  * @author Matthieu Riou <mriou@apache.org>
  */
-public class ServerResources {
+public class ServerLifecycle {
     private static final Logger __log = Logger.getLogger(EmbeddedServer.class);
 
     protected Options _options;
@@ -42,8 +43,9 @@ public class ServerResources {
     protected ExecutorService _executorService;
     protected Scheduler _scheduler;
     protected EmbeddedStore _store;
+    protected EngineWebResource _webEngine;
 
-    public ServerResources(Options options) {
+    public ServerLifecycle(Options options) {
         _options = options;
         if (_options.getThreadPoolMaxSize() <= 0) _executorService = Executors.newCachedThreadPool();
         else _executorService = Executors.newFixedThreadPool(_options.getThreadPoolMaxSize());
@@ -56,6 +58,9 @@ public class ServerResources {
         initDAO();
         __log.debug("Initializing BPEL process store.");
         initProcessStore();
+
+        if (options.isRestful()) initRestfulServer();
+
         __log.debug("Initializing BPEL server.");
         initBpelServer();
 
@@ -73,7 +78,10 @@ public class ServerResources {
         _server.setDaoConnectionFactory(_daoCF);
 //        _server.setEndpointReferenceContext(new EndpointReferenceContextImpl(this));
         _server.setMessageExchangeContext(new MessageExchangeContextImpl(_options.getMessageSender()));
-        _server.setBindingContext(new BindingContextImpl());
+        
+        BindingContextImpl bc = new BindingContextImpl(_options);
+        _server.setBindingContext(bc);
+
         _server.setScheduler(_scheduler);
         _server.setTransactionManager(_txMgr);
         if (_options.isDehydrationEnabled()) {
@@ -138,6 +146,14 @@ public class ServerResources {
         // TODO Support persistent store as well
         _store = new EmbeddedStore();
         _store.registerListener(new ProcessStoreListenerImpl());
+    }
+
+    private void initRestfulServer() {
+        EngineWebResource.startRestfulServer(this);
+    }
+    
+    public void setEngineWebResource(EngineWebResource webEngine) {
+        _webEngine = webEngine;
     }
 
     /**

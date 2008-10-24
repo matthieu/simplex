@@ -96,6 +96,7 @@ scope BPELScope Parent;
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex | exit | signal | join
+		| collect
 		| variable | partner_link;
 block
 scope Parent;
@@ -213,11 +214,11 @@ reply
     };
 receive	
 scope ReceiveBlock;
-	:	^(RECEIVE ^(p=ID o=ID {
+	:	^(RECEIVE ^(p=ID o=ID? correlation?) {
             OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
                 $Parent::activity, text($p), text($o));
 		    $ReceiveBlock::activity = rec.getOActivity();
-		} correlation?))
+		} )
 		(prb=(param_block))?;
 
 assign	
@@ -225,15 +226,20 @@ scope ExprContext;
 	:	^(ASSIGN {
         $ExprContext::expr = new SimPELExpr(builder.getProcess());
     }
-    lv=(path_expr) rv=(rvalue)) {
+    lv=(path_expr) {
+        $ExprContext::expr.setLValue(deepText($lv));
+    }
+    rv=(rvalue)) {
         $ExprContext::expr.setExpr(deepText($rv));
-		OBuilder.StructuredActivity<OAssign> assign =
-            builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, deepText($lv), $ExprContext::expr);
-        // The long, winding road of abstraction
-        $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.
-            getOActivity().operations.get(0)).from).expression;
+        if (!"RESOURCE".equals($rv.getText())) {
+		    OBuilder.StructuredActivity<OAssign> assign =
+                builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
+            // The long, winding road of abstraction
+            $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.
+                getOActivity().operations.get(0)).from).expression;
+        }
     };
-rvalue	:	receive | invoke | expr | xmlElement;
+rvalue	:	receive | invoke | resource | expr | xmlElement;
 	
 throw_ex:	^(THROW ns_id);
 
@@ -241,8 +247,29 @@ wait_ex	:	^(WAIT expr);
 
 exit	:	EXIT;
 
+// RESTful activities
+
+collect
+scope ReceiveBlock;
+    : ^(COLLECT ID) {
+        OBuilder.StructuredActivity<OCollect> collect = builder.build(OCollect.class, $BPELScope::oscope,
+            $Parent::activity, text($ID));
+        $ReceiveBlock::activity = collect.getOActivity();
+    } param_block;
+
 // Other
 variable:	^(VARIABLE ID VAR_MODS*) { builder.addVariableDecl(text($ID), text($VAR_MODS)); };
+
+resource
+scope ExprContext;
+    :   ^(RESOURCE {
+        $ExprContext::expr = new SimPELExpr(builder.getProcess());
+    }
+    e=(expr)? ID?) {
+        $ExprContext::expr.setExpr(deepText($e));
+        // The resource name is the lvalue of the assignment expression in which this resource def is enclosed
+        builder.addResourceDecl($ExprContext[-1]::expr.getLValue(), $ExprContext::expr, text($ID)); 
+    };
 
 partner_link
 	:	^(PARTNERLINK ID*);

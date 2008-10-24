@@ -39,8 +39,8 @@ public class OBuilder extends BaseCompiler {
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String, OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
     private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
+    private HashMap<String,OResource> webResources = new HashMap<String,OResource>();
     private HashSet<String> typedVariables = new HashSet<String>();
-    private boolean firstReceive = true;
 
     public OBuilder() {
         HashMap<String, String> exprRuntime = new HashMap<String, String>();
@@ -149,15 +149,24 @@ public class OBuilder extends BaseCompiler {
         };
     }
 
-    public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLink, String operation) {
+    public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLinkOrResource, String operation) {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
-        onMessage.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, true);
-        onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
+        if (operation == null) {
+            onMessage.resource = webResources.get(partnerLinkOrResource);
+            if (onMessage.resource == null)
+                throw new RuntimeException("Unknown resource declared in receive: " + partnerLinkOrResource);
+            onMessage.resource.setMethod("POST");
+        } else {
+            onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
+            onMessage.partnerLink = buildPartnerLink(oscope, partnerLinkOrResource, operation, true, true);
+        }
 
-        if (firstReceive) {
-            firstReceive = false;
-            onMessage.partnerLink.addCreateInstanceOperation(onMessage.operation);
+        if (_oprocess.firstReceive == null) {
+            if (onMessage.partnerLink != null)
+                onMessage.partnerLink.addCreateInstanceOperation(onMessage.operation);
             receive.createInstanceFlag = true;
+            _oprocess.firstReceive = receive;
+            if (onMessage.resource != null) onMessage.resource.setInstantiateResource(true);
         }
 
         onMessage.activity = new OEmpty(_oprocess, receive);
@@ -175,6 +184,14 @@ public class OBuilder extends BaseCompiler {
         return new SimpleActivity<OInvoke>(invoke);
     }
 
+    public SimpleActivity buildCollect(OCollect collect, OScope oscope, String resource) {
+        OResource res = webResources.get(resource);
+        if (res == null) throw new RuntimeException("Unknown resource referenced in collect: " + resource);
+
+        collect.setResource(res);
+        return new SimpleActivity<OCollect>(collect);
+    }
+
     public StructuredActivity buildSequence(final OSequence seq, OScope oscope) {
         return new StructuredActivity<OSequence>(seq) {
             public void run(OActivity child) {
@@ -183,19 +200,18 @@ public class OBuilder extends BaseCompiler {
         };
     }
 
-    public SimpleActivity buildAssign(OAssign oassign, OScope oscope, String lexpr, SimPELExpr rexpr) {
+    public SimpleActivity buildAssign(OAssign oassign, OScope oscope, SimPELExpr rexpr) {
         OAssign.Copy ocopy = new OAssign.Copy(_oprocess);
         oassign.operations.add(ocopy);
 
         OAssign.VariableRef vref = new OAssign.VariableRef(_oprocess);
-        String lvar = lexpr.split("\\.")[0];
+        String lvar = rexpr.getLValue().split("\\.")[0];
         vref.variable = resolveVariable(oscope, lvar);
         // Don't worry, it's all type safe, therefore it's correct
         if (vref.variable.type instanceof OMessageVarType)
             vref.part = ((OMessageVarType)vref.variable.type).parts.values().iterator().next();
         ocopy.to = vref;
 
-        rexpr.setLValue(lexpr);
         rexpr.setLVariable(lvar);
         rexpr.expressionLanguage = _exprLang;
         ocopy.from = new OAssign.Expression(_oprocess, rexpr);
@@ -208,9 +224,14 @@ public class OBuilder extends BaseCompiler {
         if (partnerLink == null) {
             if (oreceive == null) throw new RuntimeException("No parent receive but reply with var " + var +
                     " has no partnerLink/operation information.");
-            oreply.partnerLink = oreceive.onMessages.get(0).partnerLink;
-            oreply.operation = oreceive.onMessages.get(0).operation;
-            buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), true, false);
+            OPickReceive.OnMessage onm = oreceive.onMessages.get(0);
+            if (onm.isRestful()) {
+                oreply.resource = onm.resource;
+            } else {
+                oreply.partnerLink = onm.partnerLink;
+                oreply.operation = onm.operation;
+                buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), true, false);
+            }
         } else {
             oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, false);
             oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null);
@@ -231,7 +252,7 @@ public class OBuilder extends BaseCompiler {
         OActivity oact = parentList.get(parentList.indexOf(blockActivity) - 1);
         if (oact instanceof OPickReceive) {
             OPickReceive.OnMessage rec = ((OPickReceive)oact).onMessages.get(0);
-            rec.variable = resolveVariable(oscope, varName, rec.operation.getName(), true);
+            rec.variable = resolveVariable(oscope, varName, rec.operation != null ? rec.operation.getName() : null, true);
             if (rec.matchCorrelation != null) {
                 // Setting the message variable type associated with the correlation expression
                 for (PropertyExtractor extractor : rec.matchCorrelation.getExtractors()) {
@@ -242,6 +263,8 @@ public class OBuilder extends BaseCompiler {
             OInvoke inv = (OInvoke)oact;
             inv.outputVar = resolveVariable(oscope, varName, inv.operation.getName(), false);
             buildPartnerLink(oscope, inv.partnerLink.name, inv.operation.getName(), false, false);
+        } else if (oact instanceof OCollect) {
+            OCollect collect = (OCollect)oact;
         } else __log.warn("Can't set block parameter on activity " + oact);
     }
 
@@ -278,6 +301,24 @@ public class OBuilder extends BaseCompiler {
             set.declaringScope = _oprocess.processScope;
             _oprocess.processScope.addCorrelationSet(set);
         }
+    }
+
+    public void addResourceDecl(String resourceName, SimPELExpr pathExpr, String resourceRef) {
+        OResource res = new OResource(_oprocess);
+        res.setName(resourceName);
+        if (pathExpr != null) {
+            pathExpr.expressionLanguage = _exprLang;
+            res.setSubpath(pathExpr);
+        }
+
+        if (resourceRef != null) {
+            OResource reference = webResources.get(resourceRef);
+            if (reference == null) throw new RuntimeException("Unknown resource reference " + resourceRef +
+                    " in the definition of resource " + resourceName);
+            res.setReference(reference);
+        }
+        webResources.put(resourceName, res);
+        _oprocess.providedResources.add(res);
     }
 
     public void addCorrelationMatch(OActivity receive, List match) {

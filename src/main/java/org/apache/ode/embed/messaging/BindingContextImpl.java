@@ -5,6 +5,8 @@ import org.apache.ode.il.epr.WSDL11Endpoint;
 import org.apache.ode.il.epr.URLEndpoint;
 import org.apache.ode.utils.DOMUtils;
 import org.apache.ode.utils.Namespaces;
+import org.apache.ode.Options;
+import org.apache.ode.rest.EngineWebResource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -15,6 +17,12 @@ import javax.xml.namespace.QName;
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class BindingContextImpl implements BindingContext {
+
+    private Options _options;
+
+    public BindingContextImpl(Options options) {
+        _options = options;
+    }
 
     public EndpointReference activateMyRoleEndpoint(QName qName, Endpoint endpoint) {
         Document doc = DOMUtils.newDocument();
@@ -34,6 +42,14 @@ public class BindingContextImpl implements BindingContext {
 
     public void deactivateMyRoleEndpoint(Endpoint endpoint) {
         // Nothing needed here
+    }
+
+    public void activateProvidedResource(Resource resource) {
+        EngineWebResource.registerResource(resource);
+    }
+
+    public void deactivateProvidedResource(Resource resource) {
+
     }
 
     public PartnerRoleChannel createPartnerRoleChannel(QName qName, PortType portType, Endpoint endpoint) {

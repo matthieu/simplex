@@ -23,7 +23,8 @@ require "buildr/antlr"
 VERSION_NUMBER = "1.2-SNAPSHOT"
 NEXT_VERSION = "1.2"
 
-ANTLR   = "org.antlr:antlr:jar:3.0.1"
+ANTLR               = "org.antlr:antlr:jar:3.0.1"
+ASM                 = "asm:asm:jar:3.1"
 COMMONS             = struct(
   :logging          =>"commons-logging:commons-logging:jar:1.1",
   :lang             =>"commons-lang:commons-lang:jar:2.1"
@@ -36,8 +37,11 @@ GERONIMO            = struct(
 HSQLDB              = "hsqldb:hsqldb:jar:1.8.0.7"
 JAVAX               = struct(
   :transaction      =>"org.apache.geronimo.specs:geronimo-jta_1.1_spec:jar:1.1",
-  :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0"
+  :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0",
+  :rest             =>"javax.ws.rs:jsr311-api:jar:1.0"
 )
+JERSEY              = group("jersey-server", "jersey-client", "jersey-core", :under=>"com.sun.jersey", :version=>"1.0")
+JETTY               = group("jetty", "jetty-util", "servlet-api-2.5", :under=>"org.mortbay.jetty", :version=>"6.1.11")
 LOG4J               = "log4j:log4j:jar:1.2.15"
 ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-runtimes", 
                             "ode-engine", "ode-il-common", "ode-jacob", "ode-scheduler-simple", 
@@ -46,7 +50,7 @@ WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"
 XERCES              = "xerces:xercesImpl:jar:2.8.1"
 
 repositories.remote << "http://repo1.maven.org/maven2"
-repositories.remote << "http://people.apache.org/~mriou/ode-1.2RC1/"
+repositories.remote << "http://download.java.net/maven/2"
 
 desc "ODE SimPEL process execution language."
 define "simpel" do
@@ -85,8 +89,8 @@ define "simpel" do
 
   compile.from antlr_task
   compile.enhance([task('tweak_antlr')])
-  compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging, ODE, LOG4J, 
-    WSDL4J, GERONIMO.transaction, XERCES,
+  compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging,
+    ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
     file(_("lib/e4x-grammar-0.1.jar")), ANTLR, file(_("lib/rhino-1.7R2pre-patched.jar"))
   test.using :fork => :each
   package :jar

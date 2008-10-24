@@ -20,7 +20,7 @@ package org.apache.ode;
 
 import org.apache.log4j.Logger;
 import org.apache.ode.bpel.iapi.*;
-import org.apache.ode.embed.ServerResources;
+import org.apache.ode.embed.ServerLifecycle;
 import org.apache.ode.utils.DOMUtils;
 import org.apache.ode.utils.GUID;
 import org.w3c.dom.Document;
@@ -37,7 +37,7 @@ public class EmbeddedServer {
     private static final Logger __log = Logger.getLogger(EmbeddedServer.class);
 
     public Options options;
-    protected ServerResources _resources;
+    protected ServerLifecycle _resources;
 
     public EmbeddedServer() {
         this.options = new Options();
@@ -49,7 +49,7 @@ public class EmbeddedServer {
 
     public void start(Options options) {
         this.options = options;
-        _resources = new ServerResources(options);
+        _resources = new ServerLifecycle(options);
     }
 
     public void stop() {

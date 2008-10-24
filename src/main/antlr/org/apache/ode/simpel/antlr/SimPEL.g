@@ -8,7 +8,8 @@ options {
 tokens {
     ROOT; PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
-    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM; 
+    COLLECT; RESOURCE;
+    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM;
     SIGNAL; JOIN; WITH; MAP;
     EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
 }
@@ -94,7 +95,7 @@ process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
-		| receive | invoke | ((reply | assign | throw_ex | wait_ex | exit | signal | join
+		| receive | invoke | collect | ((reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables | partner_link) SEMI!);
 
 block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
@@ -149,14 +150,14 @@ options {backtrack=true;}
         :	receive_base SEMI -> ^(RECEIVE receive_base) |
             receive_base param_block -> ^(RECEIVE receive_base) param_block;
 receive_base
-	    :	'receive' '(' p=ID ',' o=ID (',' correlation)? ')' -> ^($p $o correlation?);
+	    :	'receive' '(' p=ID (',' o=ID (',' correlation)? )? ')' -> ^($p $o? correlation?);
 
 reply	:	'reply' '(' ID (',' ID ',' ID)? ')' -> ^(REPLY ID (ID ID)?);
 
 assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue
 	    :	receive_base -> ^(RECEIVE receive_base)
-		    | invoke | expr | xml_literal;
+		    | invoke | resource | expr | xml_literal;
 	
 throw_ex:	'throw' '('? ns_id ')'? -> ^(THROW ns_id);
 
@@ -167,11 +168,17 @@ compensate
 
 exit	:	'exit' -> ^(EXIT);
 
+// RESTful activities
+
+collect : 'collect' '(' ID ')' param_block -> ^(COLLECT ID) param_block;
 
 // Others
 namespace
 	:	'namespace' ID '=' STRING SEMI -> ^(NAMESPACE ID STRING);
-		
+
+resource
+    :   'resource' '(' expr? (',' ID)? ')' -> ^(RESOURCE expr? ID?);
+
 variables
 	:	'var'! v+=variable (','! v+=variable)*;
 variable:	ID VAR_MODS* -> ^(VARIABLE ID VAR_MODS*);
@@ -200,7 +207,7 @@ atom	:	path_expr | INT | '(' s_expr ')' -> s_expr | funct_call;
 path_expr
 	:	pelmt+=ns_id ('.' pelmt+=ns_id)* -> ^(PATH $pelmt);
 
-ns_id	:	(pr=ID '::')? loc=ID ('()')? -> ^(NS $pr? $loc);
+ns_id	:	(pr=ID '::')? loc=ID ('(' ')')? -> ^(NS $pr? $loc);
 
 // In-line XML
 

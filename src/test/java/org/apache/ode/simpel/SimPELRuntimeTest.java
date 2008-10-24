@@ -8,18 +8,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.serialize.ScriptableOutputStream;
-import org.mozilla.javascript.serialize.ScriptableInputStream;
 
 import javax.xml.namespace.QName;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ByteArrayInputStream;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
