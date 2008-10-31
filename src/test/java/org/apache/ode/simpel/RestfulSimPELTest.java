@@ -6,6 +6,7 @@ import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.ClientResponse;
 
 import javax.ws.rs.core.Response;
 
@@ -30,9 +31,9 @@ public class RestfulSimPELTest extends TestCase {
         Client c = Client.create(cc);
 
         WebResource wr = c.resource("http://localhost:3033/hello");
-        Response resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(Response.class, "<wrapper>foo</wrapper>");
-        System.out.println("=> " + resp.getEntity());
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/HelloWorld\">foo</simpelWrapper>");
+        System.out.println("=> " + resp.getEntity(String.class));
         System.out.println("loc " + resp.getMetadata().get("Location"));
     }
 }

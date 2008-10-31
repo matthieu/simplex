@@ -66,8 +66,12 @@ public class ProcessWebResource {
             if (mex.getResponse() == null) {
                 return Response.status(204).build();
             } else {
-                return Response.status(200).entity(
-                        DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(mex.getResponse().getMessage())))).build();
+                return Response.status(200)
+                        .entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
+                                .getFirstChildElement(mex.getResponse().getMessage()))))
+                        .type("application/xml")
+                        .header("Location", mex.getResource().getUrl())
+                        .build();
             }
 
         }

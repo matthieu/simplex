@@ -268,7 +268,7 @@ scope ExprContext;
     e=(expr)? ID?) {
         $ExprContext::expr.setExpr(deepText($e));
         // The resource name is the lvalue of the assignment expression in which this resource def is enclosed
-        builder.addResourceDecl($ExprContext[-1]::expr.getLValue(), $ExprContext::expr, text($ID)); 
+        builder.addResourceDecl($BPELScope::oscope, $ExprContext[-1]::expr.getLValue(), $ExprContext::expr, text($ID)); 
     };
 
 partner_link

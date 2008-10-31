@@ -303,9 +303,12 @@ public class OBuilder extends BaseCompiler {
         }
     }
 
-    public void addResourceDecl(String resourceName, SimPELExpr pathExpr, String resourceRef) {
+    public void addResourceDecl(OScope scope, String resourceName, SimPELExpr pathExpr, String resourceRef) {
         OResource res = new OResource(_oprocess);
         res.setName(resourceName);
+        res.setDeclaringScope(scope);
+        scope.resource.put(resourceName, res);
+
         if (pathExpr != null) {
             pathExpr.expressionLanguage = _exprLang;
             res.setSubpath(pathExpr);
@@ -317,6 +320,17 @@ public class OBuilder extends BaseCompiler {
                     " in the definition of resource " + resourceName);
             res.setReference(reference);
         }
+
+        // Creating a variable to make the resource accessible as one
+        OXsdTypeVarType resourceVarType = new OXsdTypeVarType(_oprocess);
+        resourceVarType.simple = true;
+        resourceVarType.xsdType = new QName("http://www.w3.org/2001/XMLSchema", "anyURI");
+        OScope.Variable resourceVar = new OScope.Variable(_oprocess, resourceVarType);
+        resourceVar.name = resourceName;
+        resourceVar.declaringScope = scope;
+        variables.put(resourceName, resourceVar);
+        typedVariables.add(resourceName);
+
         webResources.put(resourceName, res);
         _oprocess.providedResources.add(res);
     }
