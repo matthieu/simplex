@@ -35,8 +35,19 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
     public void initialize(Map map) throws ConfigurationException {
     }
 
-    public String evaluateAsString(OExpression oExpression, EvaluationContext evaluationContext) throws FaultException {
-        return null;
+    public String evaluateAsString(OExpression oexpr, EvaluationContext evaluationContext) throws FaultException {
+        Context cx = ContextFactory.getGlobal().enterContext();
+        cx.setOptimizationLevel(-1);
+
+        Scriptable parentScope = getScope(cx, oexpr);
+        ODEDelegator scope = new ODEDelegator(parentScope, evaluationContext, (SimPELExpr)oexpr, cx);
+
+        // First evaluating the assignment
+        SimPELExpr expr = (SimPELExpr) oexpr;
+        Object res = cx.evaluateString(scope, expr.getExpr(), "<expr>", 0, null);
+        if (res instanceof String) return (String) res;
+        else throw new FaultException(new QName("e4xEvalFailure"), "Failed to evaluate "
+                + expr.getExpr() + " as a string value");
     }
 
     public boolean evaluateAsBoolean(OExpression oexpr, EvaluationContext evaluationContext) throws FaultException {

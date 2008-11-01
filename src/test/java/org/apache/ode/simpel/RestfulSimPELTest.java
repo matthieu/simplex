@@ -9,6 +9,7 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.ClientResponse;
 
 import javax.ws.rs.core.Response;
+import java.util.regex.Pattern;
 
 public class RestfulSimPELTest extends TestCase {
 
@@ -33,7 +34,10 @@ public class RestfulSimPELTest extends TestCase {
         WebResource wr = c.resource("http://localhost:3033/hello");
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
                 .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/HelloWorld\">foo</simpelWrapper>");
-        System.out.println("=> " + resp.getEntity(String.class));
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("Hello foo") > 0);
+        assertTrue(resp.getMetadata().get("Location").get(0).matches("/hello/[0-9]*"));
         System.out.println("loc " + resp.getMetadata().get("Location"));
     }
 }
