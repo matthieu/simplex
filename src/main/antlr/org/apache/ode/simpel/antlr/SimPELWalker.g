@@ -123,9 +123,9 @@ timeout	:	^(TIMEOUT expr block);
 
 // TODO links
 flow	
-	:	^(FLOW body*);
+	:	^(FLOW body+);
 signal	:	^(SIGNAL ID expr?);
-join	:	^(JOIN ID* expr?);
+join	:	^(JOIN ID+ expr?);
 
 if_ex	
 scope ExprContext Parent;
@@ -189,7 +189,7 @@ scope ExprContext;
 	: ^(WITH {
         $ExprContext::expr = new SimPELExpr(builder.getProcess());
     }
-    with_map* body);
+    with_map+ body);
 with_map:       ^(MAP ID path_expr);
 
 // Simple activities
@@ -272,12 +272,12 @@ scope ExprContext;
     };
 
 partner_link
-	:	^(PARTNERLINK ID*);
+	:	^(PARTNERLINK ID+);
 
 correlation
 	:	^(CORRELATION (corr_mapping {
 	        builder.addCorrelationMatch($ReceiveBlock::activity, $corr_mapping.corr); 
-	    } )*);
+	    } )+);
 corr_mapping
 returns [List corr]
 	:	^(CORR_MAP fn=ID var=ID) {
@@ -304,7 +304,7 @@ expr	:	s_expr | EXT_EXPR;
 funct_call
 	:	^(CALL ID expr*);
 path_expr
-	:	^(PATH ids=(ns_id*)) { 
+	:	^(PATH ids=(ns_id+)) { 
         builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, deepText($ids));
     };
 ns_id	:	^(NS ID? ID);

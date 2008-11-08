@@ -100,16 +100,16 @@ proc_stmt
 
 block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
 param_block
-	:	'{' ('|' in+=ID (',' in+=ID)* '|')? proc_stmt+ '}' -> ^(SEQUENCE $in proc_stmt+);
+	:	'{' ('|' in+=ID (',' in+=ID)* '|')? proc_stmt+ '}' -> ^(SEQUENCE $in* proc_stmt+);
 body	:	block | proc_stmt;
 
 // Structured activities
 pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
 
-flow	:	'parallel' b+=body ('and' b+=body)* -> ^(FLOW $b);
+flow	:	'parallel' b+=body ('and' b+=body)* -> ^(FLOW $b*);
 signal	:	'signal' '('ID (',' expr)? ')' -> ^(SIGNAL ID expr?);
-join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k expr?);
+join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k+ expr?);
 
 if_ex	:	'if' '(' expr ')' ifb=body ('else' eb=body)? -> ^(IF expr $ifb (^(ELSE $eb))?);
 
@@ -133,7 +133,7 @@ compensation
 	:	'compensation' body -> ^(COMPENSATION body);
 
 with_ex :
-                'with' '(' wm+=with_map (',' wm+=with_map)* ')' body -> ^(WITH $wm* body);
+                'with' '(' wm+=with_map (',' wm+=with_map)* ')' body -> ^(WITH $wm+ body);
 with_map:       ID ':' path_expr -> ^(MAP ID path_expr);
 
 // Simple activities
@@ -184,10 +184,10 @@ variables
 variable:	ID VAR_MODS* -> ^(VARIABLE ID VAR_MODS*);
 
 partner_link
-	:	'partnerLink' pl+=ID (',' pl+=ID)* -> ^(PARTNERLINK $pl);
+	:	'partnerLink' pl+=ID (',' pl+=ID)* -> ^(PARTNERLINK $pl+);
 
 correlation
-	:	'{' corr_mapping (',' corr_mapping)* '}' -> ^(CORRELATION corr_mapping*);
+	:	'{' corr_mapping (',' corr_mapping)* '}' -> ^(CORRELATION corr_mapping+);
 corr_mapping
 	:	fn=ID ':' var=ID -> ^(CORR_MAP $fn $var);
 
@@ -205,7 +205,7 @@ aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
 mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
 atom	:	path_expr | INT | '(' s_expr ')' -> s_expr | funct_call;
 path_expr
-	:	pelmt+=ns_id ('.' pelmt+=ns_id)* -> ^(PATH $pelmt);
+	:	pelmt+=ns_id ('.' pelmt+=ns_id)* -> ^(PATH $pelmt+);
 
 ns_id	:	(pr=ID '::')? loc=ID ('(' ')')? -> ^(NS $pr? $loc);
 
