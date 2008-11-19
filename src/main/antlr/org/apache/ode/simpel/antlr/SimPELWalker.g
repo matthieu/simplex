@@ -218,6 +218,8 @@ scope ReceiveBlock;
             OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
                 $Parent::activity, text($p), text($o));
 		    $ReceiveBlock::activity = rec.getOActivity();
+            // TODO support for multiple "correlations"
+            if ($correlation.corr != null) builder.addCorrelationMatch($ReceiveBlock::activity, $correlation.corr); 
 		} )
 		(prb=(param_block))?;
 
@@ -275,8 +277,9 @@ partner_link
 	:	^(PARTNERLINK ID+);
 
 correlation
+returns [List corr]
 	:	^(CORRELATION (corr_mapping {
-	        builder.addCorrelationMatch($ReceiveBlock::activity, $corr_mapping.corr); 
+	        corr = $corr_mapping.corr;
 	    } )+);
 corr_mapping
 returns [List corr]
@@ -304,10 +307,18 @@ expr	:	s_expr | EXT_EXPR;
 funct_call
 	:	^(CALL ID expr*);
 path_expr
-	:	^(PATH ids=(ns_id+)) { 
-        builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, deepText($ids));
-    };
-ns_id	:	^(NS ID? ID);
+	:	^(PATH {
+	        StringBuffer buff = new StringBuffer();
+	    }
+	    (i=ns_id {
+	        if (buff.length() > 0) buff.append(".");
+	        buff.append($i.qid);
+	    } )+) {
+            builder.addExprVariable($BPELScope::oscope, $ExprContext::expr, buff.toString());
+        };
+ns_id
+returns [String qid]
+    :	^(NS p=ID? n=ID) { qid = p == null ? n.getText() : (p.getText() + "::" + n.getText()); };
 
 s_expr	:	^('==' s_expr s_expr) 
 	|	^('!=' s_expr s_expr) 

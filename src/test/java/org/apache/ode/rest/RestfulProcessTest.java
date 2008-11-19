@@ -15,9 +15,10 @@ public class RestfulProcessTest extends TestCase {
 
     private static final String HELLO_WORLD =
             "process HelloWorld {\n" +
-            "   receive(myPl, helloOp) { |msgIn|\n" +
-            "       msgOut = msgIn + \" World\";\n" +
-            "       reply(msgOut);\n" +
+            "   helloRes = resource(\"/hello\"); \n" +
+            "   receive(helloRes) { |name|\n" +
+            "       helloName = \"Hello \" + name;\n" +
+            "       reply(helloName);\n" +
             "   }\n" +
             "}";
 
@@ -31,22 +32,10 @@ public class RestfulProcessTest extends TestCase {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
 
-        WebResource wr = c.resource("http://localhost:3033/ode");
+        WebResource wr = c.resource("http://localhost:3033");
         String processes = wr.path("/").accept("application/xml").get(String.class);
-        assertTrue(processes.indexOf("HelloWorld") > 0);
-
         System.out.println("=> " + processes);
-        Element processesElmt = DOMUtils.stringToDOM(processes);
-        NodeList processNL = processesElmt.getElementsByTagName("process");
-        assertTrue(processNL.getLength() > 0);
-        assertEquals("process", processNL.item(0).getNodeName());
-
-        String processUrl = processNL.item(0).getTextContent();
-
-        String process = wr.path(processUrl).accept("application/xml").get(String.class);
-        System.out.println("=> " + process);
-
-        Thread.sleep(10000);
+        assertTrue(processes.indexOf("/hello") > 0);
 
         // Check different representations (html, xml)
         // Links to instance list search, process start url, process start form

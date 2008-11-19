@@ -157,8 +157,8 @@ public class OBuilder extends BaseCompiler {
                 throw new RuntimeException("Unknown resource declared in receive: " + partnerLinkOrResource);
             onMessage.resource.setMethod("POST");
         } else {
-            onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
             onMessage.partnerLink = buildPartnerLink(oscope, partnerLinkOrResource, operation, true, true);
+            onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
         }
 
         if (_oprocess.firstReceive == null) {
@@ -274,6 +274,7 @@ public class OBuilder extends BaseCompiler {
             __log.warn("Skipping expression building, null expr");
             return;
         }
+        if (varName.indexOf(".") > 0) varName = varName.split("\\.")[0];
         expr.addVariable(resolveVariable(oscope, varName));
     }
 
