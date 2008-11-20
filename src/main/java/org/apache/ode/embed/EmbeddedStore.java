@@ -27,6 +27,7 @@ import org.apache.ode.bpel.rapi.PartnerLinkModel;
 import org.apache.ode.bpel.rapi.Serializer;
 import org.apache.ode.bpel.rapi.ProcessModel;
 import org.apache.ode.simpel.SimPELCompiler;
+import org.apache.ode.Descriptor;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
 
@@ -49,8 +50,8 @@ public class EmbeddedStore implements ProcessStore {
     private SimPELCompiler _compiler = new SimPELCompiler();
     private ArrayList<ProcessStoreListener> _listeners = new ArrayList<ProcessStoreListener>();
 
-    public Collection<QName> deploy(String processStr) {
-        OProcess op = _compiler.compileProcess(processStr);
+    public Collection<QName> deploy(String processStr, Descriptor desc) {
+        OProcess op = _compiler.compileProcess(processStr, desc);
         _processes.put(op.getQName(), op);
         
         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, op.getQName(), null));        

@@ -53,12 +53,15 @@ import org.apache.ode.bpel.rtrep.v2.*;
     
     // Lamguage level members
     
-    private OBuilder builder = new OBuilder();
+    private OBuilder builder;
 
     public OBuilder getBuilder() {
-	return builder;
+	    return builder;
     }
-    
+    public void setBuilder(OBuilder builder) {
+	    this.builder = builder;
+    }
+
     private String text(org.antlr.runtime.tree.Tree t) {
     	if (t == null) return null;
     	else return t.getText();

@@ -12,6 +12,7 @@ import org.apache.ode.simpel.wsdl.SimPELOperation;
 import org.apache.ode.simpel.wsdl.SimPELOutput;
 import org.apache.ode.simpel.wsdl.SimPELPortType;
 import org.apache.ode.utils.GUID;
+import org.apache.ode.Descriptor;
 import org.w3c.dom.Node;
 import org.w3c.dom.Document;
 
@@ -33,6 +34,7 @@ public class OBuilder extends BaseCompiler {
     private static final Logger __log = Logger.getLogger(OBuilder.class);
     private static final String SIMPEL_NS = "http://ode.apache.org/simpel/1.0/definition";
 
+    private Descriptor _desc;
     private OExpressionLanguage _exprLang;
     private OExpressionLanguage _konstExprLang;
     private String _processNS;
@@ -42,11 +44,12 @@ public class OBuilder extends BaseCompiler {
     private HashMap<String,OResource> webResources = new HashMap<String,OResource>();
     private HashSet<String> typedVariables = new HashSet<String>();
 
-    public OBuilder() {
+    public OBuilder(Descriptor desc) {
         HashMap<String, String> exprRuntime = new HashMap<String, String>();
         exprRuntime.put("runtime-class", "org.apache.ode.simpel.expr.E4XExprRuntime");
         _exprLang = new OExpressionLanguage(_oprocess, exprRuntime);
         _exprLang.expressionLanguageUri = SIMPEL_NS + "/exprLang";
+        _desc = desc;
     }
 
     public StructuredActivity build(Class oclass, OScope oscope, StructuredActivity parent, Object... params) {
@@ -106,9 +109,18 @@ public class OBuilder extends BaseCompiler {
                 "org.apache.ode.bpel.rtrep.v2.KonstExpressionLanguageRuntimeImpl");
         _oprocess.expressionLanguages.add(_konstExprLang);
 
+        // Implicit scope that wraps a process
         final OScope processScope = new OScope(_oprocess, null);
         processScope.name = "__PROCESS_SCOPE:" + name;
         _oprocess.processScope = processScope;
+
+        // Implicit self variable pointing to the instance resource for RESTful processes
+        if (_desc.isRestful()) {
+            SimPELExpr expr = new SimPELExpr(_oprocess);
+            expr.setExpr(_desc.getAddress() != null ? ("\""+_desc.getAddress()+"\"") : "\"/\"");
+            addResourceDecl(processScope, "self", expr, null);
+        }
+
         return buildScope(processScope, null);
     }
 

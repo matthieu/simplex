@@ -3,6 +3,7 @@ package org.apache.ode.simpel;
 import junit.framework.TestCase;
 import org.antlr.runtime.RecognitionException;
 import org.apache.ode.bpel.rtrep.v2.OProcess;
+import org.apache.ode.Descriptor;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -11,6 +12,14 @@ import java.io.FileReader;
  * @author Matthieu Riou <mriou@apache.org>
  */
 public class SimPELCompilerTest extends TestCase {
+
+    Descriptor desc;
+
+    public SimPELCompilerTest() {
+        super();
+        desc = new Descriptor();
+        desc.setRestful(false);
+    }
 
     /**
      * If this was Ruby, I'd just dynamically create methods for each tested process
@@ -39,7 +48,7 @@ public class SimPELCompilerTest extends TestCase {
         while ((line = reader.readLine()) != null) {
             if (line.trim().startsWith("#=")) {
                 // Found next test case divider, process is complete so we can parse
-                OProcess oprocess = comp.compileProcess(processBody.toString());
+                OProcess oprocess = comp.compileProcess(processBody.toString(), desc);
                 if (l.messages.toString().length() > 0) {
                     // Shit happened
                     allErrors.append("Test case ").append(testCaseName).append(" failed!!\n");
@@ -61,7 +70,7 @@ public class SimPELCompilerTest extends TestCase {
 
         // And the last one
         try {
-            comp.compileProcess(processBody.toString());
+            comp.compileProcess(processBody.toString(), desc);
         } catch (Exception e) {
             System.out.println("Error compiling " + testCaseName);
             e.printStackTrace();
@@ -84,19 +93,19 @@ public class SimPELCompilerTest extends TestCase {
 
     public void testLoanApproval() throws Exception {
         SimPELCompiler c = compiler();
-        c.compileProcess(readProcess("loan-approval.simpel"));
+        c.compileProcess(readProcess("loan-approval.simpel"), desc);
         reportErrors("Loan approval", c);
     }
 
     public void testAuction() throws Exception {
         SimPELCompiler c = compiler();
-        c.compileProcess(readProcess("auction.simpel"));
+        c.compileProcess(readProcess("auction.simpel"), desc);
         reportErrors("Auction service", c);
     }
 
     public void testTaskManager() throws Exception {
         SimPELCompiler c = compiler();
-        c.compileProcess(readProcess("task-manager.simpel"));
+        c.compileProcess(readProcess("task-manager.simpel"), desc);
         reportErrors("Auction service", c);
     }
 

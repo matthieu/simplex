@@ -24,7 +24,6 @@ public class RestfulProcessTest extends TestCase {
 
     public void testProcessGet() throws Exception {
         EmbeddedServer server = new EmbeddedServer();
-        server.options.makeRestful();
         server.start();
 
         server.deploy(HELLO_WORLD);

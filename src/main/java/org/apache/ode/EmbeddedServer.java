@@ -56,7 +56,11 @@ public class EmbeddedServer {
     }
 
     public Collection<QName> deploy(String process) {
-        return _resources.getStore().deploy(process);
+        return deploy(process, new Descriptor());
+    }
+
+    public Collection<QName> deploy(String process, Descriptor desc) {
+        return _resources.getStore().deploy(process, desc);
     }
 
     public void undeploy(String dir) {

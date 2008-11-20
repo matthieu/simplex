@@ -11,6 +11,8 @@ import org.apache.ode.simpel.antlr.SimPELLexer;
 import org.apache.ode.simpel.antlr.SimPELParser;
 import org.apache.ode.simpel.antlr.SimPELWalker;
 import org.apache.ode.simpel.util.DefaultErrorListener;
+import org.apache.ode.simpel.omodel.OBuilder;
+import org.apache.ode.Descriptor;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.serialize.ScriptableOutputStream;
@@ -36,7 +38,7 @@ public class SimPELCompiler {
         this.el = el;
     }
 
-    public OProcess compileProcess(String processDoc) {
+    public OProcess compileProcess(String processDoc, Descriptor desc) {
         // Isolating the process definition from the header containing global state definition (Javascript
         // functions and shared objects)
         Pattern p = Pattern.compile("process [a-zA-Z_]*", Pattern.MULTILINE);
@@ -45,7 +47,7 @@ public class SimPELCompiler {
         String header = processDoc.substring(0, m.start());
         String processDef = processDoc.substring(m.start(), processDoc.length());
 
-        OProcess model = buildModel(processDef);
+        OProcess model = buildModel(processDef, desc);
         if (header.trim().length() > 0)
             model.globalState = buildGlobalState(header);
         return model;
@@ -75,7 +77,7 @@ public class SimPELCompiler {
         return baos.toByteArray();
     }
 
-    private OProcess buildModel(String processDef) {
+    private OProcess buildModel(String processDef, Descriptor desc) {
         ANTLRReaderStream charstream = null;
         try {
             charstream = new ANTLRReaderStream(new StringReader(processDef));
@@ -113,6 +115,8 @@ public class SimPELCompiler {
             // Pass the tree to the walker for compilation
             CommonTreeNodeStream nodes = new CommonTreeNodeStream(t);
             SimPELWalker walker = new SimPELWalker(nodes);
+            OBuilder obuilder = new OBuilder(desc);
+            walker.setBuilder(obuilder);
             walker.setErrorListener(errListener);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
             rewriteTokens(tokenMapping, E4XParser.tokenNames, t, walker, false);

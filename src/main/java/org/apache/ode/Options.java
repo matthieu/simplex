@@ -35,7 +35,7 @@ public class Options {
     private OdeConfigProperties _odeProps;
     private Properties _backingProps;
     private List<BpelEventListener> _eventListeners;
-    private boolean _enableRest;
+    private boolean _enableRest = true;
 
     public Options() {
         _backingProps = new Properties();
@@ -84,10 +84,6 @@ public class Options {
 
     public Properties getProperties() {
         return _backingProps;
-    }
-
-    public void makeRestful() {
-        _enableRest = true;
     }
 
     public boolean isRestful() {

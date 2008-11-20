@@ -1,6 +1,7 @@
 package org.apache.ode.simpel;
 
 import org.apache.ode.EmbeddedServer;
+import org.apache.ode.Descriptor;
 import junit.framework.TestCase;
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
@@ -15,18 +16,18 @@ public class RestfulSimPELTest extends TestCase {
 
     private static final String HELLO_WORLD =
             "process HelloWorld {\n" +
-            "   helloRes = resource(\"/hello\"); \n" +
-            "   receive(helloRes) { |name|\n" +
+            "   receive(self) { |name|\n" +
             "       helloName = \"Hello \" + name;\n" +
             "       reply(helloName);\n" +
             "   }\n" +
             "}";
 
     public void testRestfulHelloWorld() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
-        server.options.makeRestful();
+        EmbeddedServer server = new EmbeddedServer();
         server.start();
-        server.deploy(HELLO_WORLD);
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/hello");
+        server.deploy(HELLO_WORLD, desc);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -40,4 +41,11 @@ public class RestfulSimPELTest extends TestCase {
         assertTrue(resp.getMetadata().get("Location").get(0).matches("/hello/[0-9]*"));
         System.out.println("loc " + resp.getMetadata().get("Location"));
     }
+
+    private static final String COUNTER =
+            "process Counter {\n" +
+            "   initial = receive(self); \n" +
+            "}";
+
+
 }
