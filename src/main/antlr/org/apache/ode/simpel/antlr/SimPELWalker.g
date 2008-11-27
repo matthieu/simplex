@@ -9,7 +9,7 @@ tokens {
 }
 scope BPELScope { OScope oscope; }
 scope Parent { OBuilder.StructuredActivity activity; }
-scope ReceiveBlock { OActivity activity; }
+scope ReceiveBlock { OComm activity; }
 scope ExprContext { SimPELExpr expr; }
 
 @header {
@@ -99,7 +99,6 @@ scope BPELScope Parent;
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
 		| invoke | receive | reply | assign | throw_ex | wait_ex | exit | signal | join
-		| collect
 		| variable | partner_link;
 block
 scope Parent;
@@ -166,7 +165,7 @@ forall
 try_ex
 scope BPELScope;
 	:	^(TRY {
-            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, null, $Parent::activity);
+            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, $BPELScope[-1]::oscope, $Parent::activity);
             $BPELScope::oscope = oscope.getOActivity();
         }
         body catch_ex*);
@@ -175,15 +174,39 @@ catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 scope_ex
 scope BPELScope;
 	:	^(SCOPE {
-            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, null, $Parent::activity);
+            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, $BPELScope[-1]::oscope, $Parent::activity);
             $BPELScope::oscope = oscope.getOActivity();
         }
 	    ID? body scope_stmt*);
 scope_stmt
-	:	event | alarm | compensation;
+	:	onevent | onalarm | compensation | onquery | onrec | onupd;
 
-event	:	^(EVENT ID ID param_block);
-alarm	:	^(ALARM expr body);
+onevent	:	^(ONEVENT ID ID param_block);
+onalarm	:	^(ONALARM expr body);
+onquery
+scope ReceiveBlock;
+    :	^(ONQUERY ID {
+            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
+                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent::activity, deepText($ID), "GET");
+            $ReceiveBlock::activity = on.getOActivity();
+        }
+        body);
+onrec
+scope ReceiveBlock;
+    :	^(ONRECEIVE ID {
+            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
+                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent::activity, deepText($ID), "POST");
+            $ReceiveBlock::activity = on.getOActivity();
+        }
+        body);
+onupd
+scope ReceiveBlock;
+    :	^(ONUPDATE ID {
+            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
+                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent::activity, deepText($ID), "PUT");
+            $ReceiveBlock::activity = on.getOActivity();
+        }
+        body);
 compensation
 	:	^(COMPENSATION body);
 
@@ -222,9 +245,9 @@ scope ReceiveBlock;
             OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
                 $Parent::activity, text($p), text($o), $ExprContext::expr);
 
-		    $ReceiveBlock::activity = rec.getOActivity();
+		    $ReceiveBlock::activity = rec.getOActivity().onMessages.get(0);
             // TODO support for multiple "correlations"
-            if ($correlation.corr != null) builder.addCorrelationMatch($ReceiveBlock::activity, $correlation.corr); 
+            if ($correlation.corr != null) builder.addCorrelationMatch(rec.getOActivity(), $correlation.corr); 
 		} )
 		(prb=(param_block))?;
 
@@ -262,16 +285,6 @@ scope ExprContext;
         };
 
 exit	:	EXIT;
-
-// RESTful activities
-
-collect
-scope ReceiveBlock;
-    : ^(COLLECT ID) {
-        OBuilder.StructuredActivity<OCollect> collect = builder.build(OCollect.class, $BPELScope::oscope,
-            $Parent::activity, text($ID));
-        $ReceiveBlock::activity = collect.getOActivity();
-    } param_block;
 
 // Other
 variable:	^(VARIABLE ID VAR_MODS*) { builder.addVariableDecl(text($ID), text($VAR_MODS)); };

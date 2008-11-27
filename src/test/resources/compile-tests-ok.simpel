@@ -64,7 +64,7 @@ process ScopeAlarm {
   msg_in = receive(my_pl, start_op);
   scope {
     wait([PT59S]);
-  } alarm([PT60S]) {
+  } onAlarm([PT60S]) {
     exit;
   }
 }
@@ -77,7 +77,7 @@ process ScopeEvent {
   msg_in = receive(my_pl, start_op);
   scope {
     wait([PT60S]);
-  } event(stop_pl, stop) { |msg|
+  } onEvent(stop_pl, stop) { |msg|
     exit;
   }
 }
@@ -103,9 +103,9 @@ process ScopeAll {
   msg_in = receive(my_pl, start_op);
   scope {
     wait([PT60S]);
-  } alarm([PT60S]) {
+  } onAlarm([PT60S]) {
     exit;
-  } event(stop_pl, stop) { |msg|
+  } onEvent(stop_pl, stop) { |msg|
     exit;
   } compensation {
     invoke(pl, op, msg);
@@ -120,7 +120,7 @@ process ScopeAll {
   msg_in = receive(my_pl, start_op);
   scope
     wait([PT60S]);
-  alarm([PT60S])
+  onAlarm([PT60S])
     exit;
   compensation
     invoke(pl, op, msg);

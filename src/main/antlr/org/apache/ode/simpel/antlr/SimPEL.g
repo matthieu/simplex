@@ -8,8 +8,9 @@ options {
 tokens {
     ROOT; PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
-    COLLECT; RESOURCE;
-    ALARM; COMPENSATION; COMPENSATE; CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM;
+    RESOURCE;
+    ONEVENT; ONALARM; ONRECEIVE; ONUPDATE; ONQUERY; COMPENSATION; COMPENSATE;
+    CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM;
     SIGNAL; JOIN; WITH; MAP;
     EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
 }
@@ -95,7 +96,7 @@ process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
-		| receive | invoke | collect | ((reply | assign | throw_ex | wait_ex | exit | signal | join
+		| receive | invoke | ((reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables | partner_link) SEMI!);
 
 block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
@@ -125,10 +126,13 @@ catch_ex:	'catch' '(' ns_id ')' param_block -> ^(CATCH ns_id param_block);
 
 scope_ex:	'scope' ('(' ID ')')? body scope_stmt* -> ^(SCOPE ID? body scope_stmt*);
 scope_stmt
-	:	event | alarm | compensation;
+	:	onevent | onalarm | compensation | onquery | onrec | onupd;
 
-event	:	'event' '(' p=ID ',' o=ID ')' param_block -> ^(EVENT $p $o param_block);
-alarm	:	'alarm' '(' expr ')' body -> ^(ALARM expr body);
+onevent	:	'onEvent' '(' p=ID ',' o=ID ')' param_block -> ^(ONEVENT $p $o param_block);
+onalarm	:	'onAlarm' '(' expr ')' body -> ^(ONALARM expr body);
+onquery	:	'onQuery' '(' r=ID ')' body -> ^(ONQUERY $r body);
+onrec	:	'onReceive' '(' r=ID ')' body -> ^(ONRECEIVE $r body);
+onupd	:	'onUpdate' '(' r=ID ')' body -> ^(ONUPDATE $r body);
 compensation
 	:	'compensation' body -> ^(COMPENSATION body);
 
@@ -167,10 +171,6 @@ compensate
 	:	'compensate' ('(' ID ')')? -> ^(COMPENSATE ID?);
 
 exit	:	'exit' -> ^(EXIT);
-
-// RESTful activities
-
-collect : 'collect' '(' ID ')' param_block -> ^(COLLECT ID) param_block;
 
 // Others
 namespace

@@ -58,11 +58,30 @@ public class RestfulSimPELTest extends TestCase {
             "       links.increment = inc; \n" +
             "       links.decrement = dec; \n" +
             "       links.value = value; \n" +
-            "       reply(); \n" +
+            "       reply(links); \n" +
             "   } onQuery(value) {\n" +
-            "       reply(counter) \n" +
+            "       reply(counter); \n" +
+            "   } onReceive(dec) {\n" +
+            "       counter = counter - 1; \n" +
+            "       reply(counter); \n" +
             "   } \n" +
             "}";
 
+    public void testCounter() throws Exception {
+        EmbeddedServer server = new EmbeddedServer();
+        server.start();
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/counter");
+        server.deploy(COUNTER, desc);
 
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/counter");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/HelloWorld\">5</simpelWrapper>");
+        String response = resp.getEntity(String.class);
+
+        server.stop();
+    }
 }

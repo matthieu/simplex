@@ -194,6 +194,17 @@ public class OBuilder extends BaseCompiler {
         return new SimpleActivity<OPickReceive>(receive);
     }
 
+    public StructuredActivity buildEvent(final OEventHandler.OEvent oevent, OScope oscope, String resource, String method) {
+        oevent.resource = webResources.get(resource);
+        // TODO a single resource can have more than one method
+        oevent.resource.setMethod(method);
+        return new StructuredActivity<OEventHandler.OEvent>(oevent) {
+            public void run(OActivity child) {
+                oevent.activity = child;
+            }
+        };
+    }    
+
     public SimpleActivity buildInvoke(OInvoke invoke, OScope oscope, String partnerLink,
                                       String operation, String incomingMsg) {
         invoke.partnerLink = buildPartnerLink(oscope, partnerLink, operation, false, incomingMsg != null);
@@ -244,18 +255,17 @@ public class OBuilder extends BaseCompiler {
         return new SimpleActivity<OWait>(owait);
     }
 
-    public SimpleActivity buildReply(OReply oreply, OScope oscope, OPickReceive oreceive,
+    public SimpleActivity buildReply(OReply oreply, OScope oscope, OComm ocomm,
                                      String var, String partnerLink, String operation) {
         oreply.variable = resolveVariable(oscope, var, operation, false);
         if (partnerLink == null) {
-            if (oreceive == null) throw new RuntimeException("No parent receive but reply with var " + var +
+            if (ocomm == null) throw new RuntimeException("No parent receive but reply with var " + var +
                     " has no partnerLink/operation information.");
-            OPickReceive.OnMessage onm = oreceive.onMessages.get(0);
-            if (onm.isRestful()) {
-                oreply.resource = onm.resource;
+            if (ocomm.isRestful()) {
+                oreply.resource = ocomm.getResource();
             } else {
-                oreply.partnerLink = onm.partnerLink;
-                oreply.operation = onm.operation;
+                oreply.partnerLink = ocomm.getPartnerLink();
+                oreply.operation = ocomm.getOperation();
                 buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), true, false);
             }
         } else {
