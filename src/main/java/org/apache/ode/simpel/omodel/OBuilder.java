@@ -13,11 +13,8 @@ import org.apache.ode.simpel.wsdl.SimPELOutput;
 import org.apache.ode.simpel.wsdl.SimPELPortType;
 import org.apache.ode.utils.GUID;
 import org.apache.ode.Descriptor;
-import org.w3c.dom.Node;
-import org.w3c.dom.Document;
 
 import javax.wsdl.PortType;
-import javax.wsdl.Part;
 import javax.xml.namespace.QName;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -41,7 +38,7 @@ public class OBuilder extends BaseCompiler {
     private HashMap<String,String> namespaces = new HashMap<String,String>();
     private HashMap<String, OPartnerLink> partnerLinks = new HashMap<String,OPartnerLink>();
     private HashMap<String,OScope.Variable> variables = new HashMap<String,OScope.Variable>();
-    private HashMap<String,OResource> webResources = new HashMap<String,OResource>();
+    private HashMap<String,ResourceDesc> webResources = new HashMap<String,ResourceDesc>();
     private HashSet<String> typedVariables = new HashSet<String>();
 
     public OBuilder(Descriptor desc) {
@@ -127,7 +124,13 @@ public class OBuilder extends BaseCompiler {
     public StructuredActivity<OScope> buildScope(final OScope oscope, OScope parentScope) {
         return new StructuredActivity<OScope>(oscope) {
             public void run(OActivity child) {
-                oscope.activity = child;
+                if (child instanceof OEventHandler.OEvent) {
+                    if (oscope.eventHandler == null)
+                        oscope.eventHandler = new OEventHandler(_oprocess);
+                    oscope.eventHandler.onMessages.add((OEventHandler.OEvent) child);
+                } else {
+                    oscope.activity = child;
+                }
             }
         };
     }
@@ -165,10 +168,10 @@ public class OBuilder extends BaseCompiler {
                                            String operation, SimPELExpr expr) {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
         if (operation == null) {
-            onMessage.resource = webResources.get(partnerLinkOrResource);
+            onMessage.resource = copyResource(webResources.get(partnerLinkOrResource), "POST");
             if (onMessage.resource == null)
                 throw new RuntimeException("Unknown resource declared in receive: " + partnerLinkOrResource);
-            onMessage.resource.setMethod("POST");
+            _oprocess.providedResources.add(onMessage.resource);
         } else {
             onMessage.partnerLink = buildPartnerLink(oscope, partnerLinkOrResource, operation, true, true);
             onMessage.operation = onMessage.partnerLink.myRolePortType.getOperation(operation, null, null);
@@ -179,7 +182,9 @@ public class OBuilder extends BaseCompiler {
                 onMessage.partnerLink.addCreateInstanceOperation(onMessage.operation);
             receive.createInstanceFlag = true;
             _oprocess.firstReceive = receive;
-            if (onMessage.resource != null) onMessage.resource.setInstantiateResource(true);
+            if (onMessage.resource != null) {
+                webResources.get(partnerLinkOrResource).setInstantiating(true);
+            }
         }
 
         // Is this receive part of an assignment? In this case the input var is the lvalue.
@@ -195,15 +200,17 @@ public class OBuilder extends BaseCompiler {
     }
 
     public StructuredActivity buildEvent(final OEventHandler.OEvent oevent, OScope oscope, String resource, String method) {
-        oevent.resource = webResources.get(resource);
-        // TODO a single resource can have more than one method
-        oevent.resource.setMethod(method);
+        oevent.resource = copyResource(webResources.get(resource), method);
+        _oprocess.providedResources.add(oevent.resource);
+        OScope eventScope = new OScope(_oprocess, oevent);
+        oevent.activity = eventScope;
+
         return new StructuredActivity<OEventHandler.OEvent>(oevent) {
             public void run(OActivity child) {
-                oevent.activity = child;
+                ((OScope)oevent.activity).activity = child;
             }
         };
-    }    
+    }
 
     public SimpleActivity buildInvoke(OInvoke invoke, OScope oscope, String partnerLink,
                                       String operation, String incomingMsg) {
@@ -212,14 +219,6 @@ public class OBuilder extends BaseCompiler {
         if (incomingMsg != null) invoke.inputVar = resolveVariable(oscope, incomingMsg, operation, true);
 
         return new SimpleActivity<OInvoke>(invoke);
-    }
-
-    public SimpleActivity buildCollect(OCollect collect, OScope oscope, String resource) {
-        OResource res = webResources.get(resource);
-        if (res == null) throw new RuntimeException("Unknown resource referenced in collect: " + resource);
-
-        collect.setResource(res);
-        return new SimpleActivity<OCollect>(collect);
     }
 
     public StructuredActivity buildSequence(final OSequence seq, OScope oscope) {
@@ -256,11 +255,11 @@ public class OBuilder extends BaseCompiler {
     }
 
     public SimpleActivity buildReply(OReply oreply, OScope oscope, OComm ocomm,
-                                     String var, String partnerLink, String operation) {
+                                     String var, String plinkOrRes, String operation) {
         oreply.variable = resolveVariable(oscope, var, operation, false);
-        if (partnerLink == null) {
+        if (plinkOrRes == null) {
             if (ocomm == null) throw new RuntimeException("No parent receive but reply with var " + var +
-                    " has no partnerLink/operation information.");
+                    " has no plinkOrRes/operation or resource information.");
             if (ocomm.isRestful()) {
                 oreply.resource = ocomm.getResource();
             } else {
@@ -269,8 +268,15 @@ public class OBuilder extends BaseCompiler {
                 buildPartnerLink(oscope, oreply.partnerLink.name, oreply.operation.getName(), true, false);
             }
         } else {
-            oreply.partnerLink = buildPartnerLink(oscope, partnerLink, operation, true, false);
-            oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null);
+            if (operation == null) {
+                ResourceDesc res = webResources.get(plinkOrRes);
+                if (res == null) throw new RuntimeException("Couldn't resolve the reply using partner link " +
+                        "or resource " + plinkOrRes +". Either an operation is missing or the resource isn't recognized.");
+                oreply.resource = res.latest;
+            } else {
+                oreply.partnerLink = buildPartnerLink(oscope, plinkOrRes, operation, true, false);
+                oreply.operation = oreply.partnerLink.myRolePortType.getOperation(operation, null, null);
+            }
         }
         // Adding partner role
         return new SimpleActivity<OReply>(oreply);
@@ -341,21 +347,20 @@ public class OBuilder extends BaseCompiler {
     }
 
     public void addResourceDecl(OScope scope, String resourceName, SimPELExpr pathExpr, String resourceRef) {
-        OResource res = new OResource(_oprocess);
-        res.setName(resourceName);
-        res.setDeclaringScope(scope);
-        scope.resource.put(resourceName, res);
+        ResourceDesc res = new ResourceDesc();
+        res.name = resourceName;
+        res.declaringScope = scope;
 
         if (pathExpr != null) {
             pathExpr.expressionLanguage = _exprLang;
-            res.setSubpath(pathExpr);
+            res.subpath = pathExpr;
         }
 
         if (resourceRef != null) {
-            OResource reference = webResources.get(resourceRef);
+            ResourceDesc reference = webResources.get(resourceRef);
             if (reference == null) throw new RuntimeException("Unknown resource reference " + resourceRef +
                     " in the definition of resource " + resourceName);
-            res.setReference(reference);
+            res.reference = reference;
         }
 
         // Creating a variable to make the resource accessible as one
@@ -369,7 +374,6 @@ public class OBuilder extends BaseCompiler {
         typedVariables.add(resourceName);
 
         webResources.put(resourceName, res);
-        _oprocess.providedResources.add(res);
     }
 
     public void addCorrelationMatch(OActivity receive, List match) {
@@ -454,6 +458,7 @@ public class OBuilder extends BaseCompiler {
             resolved = new OScope.Variable(_oprocess, omsgType);
             resolved.name = name;
             resolved.declaringScope = oscope;
+            oscope.addLocalVariable(resolved);
             variables.put(name, resolved);
         }
 
@@ -479,9 +484,42 @@ public class OBuilder extends BaseCompiler {
         return ce;
     }
 
-
     protected String getBpwsNamespace() {
         return "http://ode.apache.org/simpel/1.0";
     }
 
+    private OResource copyResource(ResourceDesc res, String method) {
+        OResource newRes = res.methods.get(method);
+        if (newRes != null) return newRes;
+
+        newRes = new OResource(_oprocess);
+        newRes.setMethod(method);
+        newRes.setDeclaringScope(res.declaringScope);
+        newRes.setInstantiateResource(res.instantiating);
+        newRes.setName(res.name);
+        if (res.reference != null) newRes.setReference(copyResource(res.reference, method));
+        newRes.setSubpath(res.subpath);
+        res.declaringScope.resource.put(newRes.getName(), newRes);
+        res.methods.put(method, newRes);
+        res.latest = newRes;
+
+        return newRes;
+    }
+
+    private static class ResourceDesc {
+        String name;
+        private boolean instantiating;
+        ResourceDesc reference;
+        OExpression subpath;
+        OScope declaringScope;
+        OResource latest;
+        HashMap<String,OResource> methods = new HashMap<String,OResource>();
+
+        void setInstantiating(boolean i) {
+            instantiating = i;
+            for (OResource resource : methods.values()) {
+                resource.setInstantiateResource(i);
+            }
+        }
+    }
 }

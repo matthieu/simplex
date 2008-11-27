@@ -10,37 +10,58 @@ import org.xml.sax.SAXException;
 import org.w3c.dom.Element;
 import org.w3c.dom.Document;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Produces;
-import javax.ws.rs.POST;
-import javax.ws.rs.Consumes;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import javax.xml.namespace.QName;
 import java.io.IOException;
 
 public class ProcessWebResource {
 
-    private Resource _resource;
+    private EngineWebResource.ResourceDesc _resource;
     private static ServerLifecycle _serverLifecyle;
+    private String _root;
 
-    public ProcessWebResource(Resource resource, ServerLifecycle serverLifecyle) {
+    public ProcessWebResource(EngineWebResource.ResourceDesc resource, ServerLifecycle serverLifecyle, String root) {
         _resource = resource;
         _serverLifecyle = serverLifecyle;
+        _root = root;
     }
 
     @GET @Produces("application/xml")
     public Response get() {
-        if ("GET".equals(_resource.getMethod())) {
+        if (_resource.get) {
+            RESTMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
+                    _resource.toResource("GET"), new GUID().toString());
+            try {
+                mex.invokeBlocking();
+            } catch (java.util.concurrent.TimeoutException te) {
+                return Response.status(408).entity("The server timed out while processing the request.").build();
+            }
 
+            if (mex.getResponse() == null) {
+                return Response.status(204).build();
+            } else {
+                return Response.status(200)
+                        .entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
+                                .getFirstChildElement(mex.getResponse().getMessage()))))
+                        .type("application/xml")
+                        .header("Location", _root+mex.getResource().getUrl())
+                        .build();
+            }
         }
-        // TODO use the resource supported methods
-        return Response.status(405).header("Allow", "POST").build();
+        else return Response.status(405).header("Allow", _resource.methods()).build();
+    }
+
+    @GET @Produces("application/xml") @Path("{subpath}")
+    public Response getSub() {
+        return get();
     }
 
     @POST @Consumes("application/xml")
     public Response post(String content) {
-        if ("POST".equals(_resource.getMethod())) {
-            RESTMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(_resource, new GUID().toString());
+        if (_resource.post) {
+            RESTMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
+                    _resource.toResource("POST"), new GUID().toString());
             Message request = mex.createMessage(null);
             try {
                 // TODO support for http headers and parameters as additional parts
@@ -70,13 +91,16 @@ public class ProcessWebResource {
                         .entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
                                 .getFirstChildElement(mex.getResponse().getMessage()))))
                         .type("application/xml")
-                        .header("Location", mex.getResource().getUrl())
+                        .header("Location", _root+mex.getResource().getUrl())
                         .build();
             }
-
         }
-        // TODO use the resource supported methods
-        return Response.status(405).header("Allow", "GET").build();
+        else return Response.status(405).header("Allow", _resource.methods()).build();
+    }
+
+    @POST @Consumes("application/xml") @Path("{subpath}")
+    public Response postSub(String content) {
+        return post(content);
     }
 
 //    @GET @Produces("application/xhtml+xml")

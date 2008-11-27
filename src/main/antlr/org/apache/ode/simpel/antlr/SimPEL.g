@@ -156,7 +156,7 @@ options {backtrack=true;}
 receive_base
 	    :	'receive' '(' p=ID (',' o=ID (',' correlation)? )? ')' -> ^($p $o? correlation?);
 
-reply	:	'reply' '(' ID (',' ID ',' ID)? ')' -> ^(REPLY ID (ID ID)?);
+reply	:	'reply' '(' ID (',' ID (',' ID)?)? ')' -> ^(REPLY ID (ID ID?)?);
 
 assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue

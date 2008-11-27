@@ -38,7 +38,7 @@ public class RestfulSimPELTest extends TestCase {
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
         assertTrue(response.indexOf("Hello foo") > 0);
-        assertTrue(resp.getMetadata().get("Location").get(0).matches("/hello/[0-9]*"));
+        assertTrue(resp.getMetadata().get("Location").get(0), resp.getMetadata().get("Location").get(0).matches("/hello/[0-9]*"));
         System.out.println("loc " + resp.getMetadata().get("Location"));
         server.stop();
     }
@@ -46,6 +46,7 @@ public class RestfulSimPELTest extends TestCase {
     private static final String COUNTER =
             "process Counter {\n" +
             "   counter = receive(self); \n" +
+            "   reply(counter, self); \n" +
             "   value = resource(\"/value\"); \n" +
             "   inc = resource(\"/inc\"); \n" +
             "   dec = resource(\"/dec\"); \n" +
@@ -78,9 +79,17 @@ public class RestfulSimPELTest extends TestCase {
         Client c = Client.create(cc);
 
         WebResource wr = c.resource("http://localhost:3434/counter");
-        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/HelloWorld\">5</simpelWrapper>");
-        String response = resp.getEntity(String.class);
+        ClientResponse createResponse = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/Counter\">5</simpelWrapper>");
+        String response = createResponse.getEntity(String.class);
+        System.out.println("=> " + response);
+        System.out.println("=> " + createResponse.getMetadata().get("Location").get(0));
+
+        String location = createResponse.getMetadata().get("Location").get(0);
+        WebResource instance = c.resource(location);
+        ClientResponse queryResponse = instance.path("/").type("application/xml").get(ClientResponse.class);
+        System.out.println("=> " + queryResponse.getStatus());
+        System.out.println("=> " + queryResponse.getEntity(String.class));
 
         server.stop();
     }

@@ -172,10 +172,11 @@ scope BPELScope;
 catch_ex:	^(CATCH ^(NS ID ID?) param_block);
 
 scope_ex
-scope BPELScope;
+scope BPELScope Parent;
 	:	^(SCOPE {
-            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, $BPELScope[-1]::oscope, $Parent::activity);
+            OBuilder.StructuredActivity<OScope> oscope = builder.build(OScope.class, $BPELScope[-1]::oscope, $Parent[-1]::activity);
             $BPELScope::oscope = oscope.getOActivity();
+            $Parent::activity = oscope;
         }
 	    ID? body scope_stmt*);
 scope_stmt
@@ -184,27 +185,30 @@ scope_stmt
 onevent	:	^(ONEVENT ID ID param_block);
 onalarm	:	^(ONALARM expr body);
 onquery
-scope ReceiveBlock;
+scope ReceiveBlock Parent;
     :	^(ONQUERY ID {
             OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
-                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent::activity, deepText($ID), "GET");
-            $ReceiveBlock::activity = on.getOActivity();
+                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "GET");
+            $ReceiveBlock::activity = (OComm) on.getOActivity();
+            $Parent::activity = on;
         }
         body);
 onrec
-scope ReceiveBlock;
+scope ReceiveBlock Parent;
     :	^(ONRECEIVE ID {
             OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
-                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent::activity, deepText($ID), "POST");
-            $ReceiveBlock::activity = on.getOActivity();
+                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "POST");
+            $ReceiveBlock::activity = (OComm) on.getOActivity();
+            $Parent::activity = on;
         }
         body);
 onupd
-scope ReceiveBlock;
+scope ReceiveBlock Parent;
     :	^(ONUPDATE ID {
             OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
-                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent::activity, deepText($ID), "PUT");
-            $ReceiveBlock::activity = on.getOActivity();
+                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "PUT");
+            $ReceiveBlock::activity = (OComm) on.getOActivity();
+            $Parent::activity = on;
         }
         body);
 compensation
@@ -230,20 +234,25 @@ scope ReceiveBlock;
         (prb=(param_block))?;
 
 reply	
-  :	^(REPLY msg=ID (pl=ID var=ID)?) {
+  :	^(REPLY msg=ID (pl=ID (op=ID)?)?) {
       if (ReceiveBlock_stack.size() > 0)
         builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
-			      $ReceiveBlock::activity, text($msg), text($pl), text($var));
+			      $ReceiveBlock::activity, text($msg), text($pl), text($op));
       else
         builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
-			      null, text($msg), text($pl), text($var));
+			      null, text($msg), text($pl), text($op));
     };
 receive	
 scope ReceiveBlock;
 	:	^(RECEIVE ^(p=ID o=ID? correlation?) {
 	        // The receive input is the lvalue of the assignment expression in which this receive is enclosed (if it is)
-            OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
-                $Parent::activity, text($p), text($o), $ExprContext::expr);
+	        OBuilder.StructuredActivity<OPickReceive> rec;
+	        if (ExprContext_stack.size() > 0)
+                rec = builder.build(OPickReceive.class, $BPELScope::oscope,
+                    $Parent::activity, text($p), text($o), $ExprContext::expr);
+            else
+                rec = builder.build(OPickReceive.class, $BPELScope::oscope,
+                    $Parent::activity, text($p), text($o), null);
 
 		    $ReceiveBlock::activity = rec.getOActivity().onMessages.get(0);
             // TODO support for multiple "correlations"
