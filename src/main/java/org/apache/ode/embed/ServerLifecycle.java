@@ -70,6 +70,19 @@ public class ServerLifecycle {
         _server.start();
     }
 
+    public void clean() {
+        EngineWebResource.stopRestfulServer();
+        _server = null;
+        _txMgr = null;
+        _executorService = null;
+        _store = null;
+        _db = null;
+        _ds = null;
+        _scheduler = null;
+        _scheduler = null;
+        _webEngine = null;
+    }
+
     private void initBpelServer() {
         _server = new BpelServerImpl();
         _scheduler = createScheduler();

@@ -53,6 +53,7 @@ public class EmbeddedServer {
     }
 
     public void stop() {
+        _resources.clean();
     }
 
     public Collection<QName> deploy(String process) {

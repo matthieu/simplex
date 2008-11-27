@@ -27,7 +27,7 @@ public class EngineWebResource {
     private static ServerLifecycle _serverLifecyle;
 
     //    private HashMap<String,QName> _services = new HashMap<String, QName>();
-    private static ConcurrentLinkedQueue<Resource> _engineResources = new ConcurrentLinkedQueue<Resource>();
+    private static ConcurrentLinkedQueue<Resource> _engineResources;
 
     @GET @Produces("application/xhtml+xml")
     public String getXHTML() {
@@ -83,13 +83,14 @@ public class EngineWebResource {
 
     public static void startRestfulServer(ServerLifecycle serverLifecyle) {
         _serverLifecyle = serverLifecyle;
+        _engineResources = new ConcurrentLinkedQueue<Resource>();
         ServletHolder sh = new ServletHolder(ServletContainer.class);
 
         sh.setInitParameter("com.sun.jersey.config.property.resourceConfigClass",
                 "com.sun.jersey.api.core.PackagesResourceConfig");
         sh.setInitParameter("com.sun.jersey.config.property.packages", "org.apache.ode.rest");
 
-        _server = new Server(3033);
+        _server = new Server(3434);
         Context context = new Context(_server, "/", Context.SESSIONS);
         context.addServlet(sh, "/*");
         try {
@@ -102,6 +103,9 @@ public class EngineWebResource {
     public static void stopRestfulServer() {
         try {
             _server.stop();
+            _server = null;
+            _serverLifecyle = null;
+            _engineResources = null;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

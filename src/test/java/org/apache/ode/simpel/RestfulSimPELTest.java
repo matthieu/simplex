@@ -32,7 +32,7 @@ public class RestfulSimPELTest extends TestCase {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
 
-        WebResource wr = c.resource("http://localhost:3033/hello");
+        WebResource wr = c.resource("http://localhost:3434/hello");
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
                 .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/HelloWorld\">foo</simpelWrapper>");
         String response = resp.getEntity(String.class);
@@ -40,11 +40,28 @@ public class RestfulSimPELTest extends TestCase {
         assertTrue(response.indexOf("Hello foo") > 0);
         assertTrue(resp.getMetadata().get("Location").get(0).matches("/hello/[0-9]*"));
         System.out.println("loc " + resp.getMetadata().get("Location"));
+        server.stop();
     }
 
     private static final String COUNTER =
             "process Counter {\n" +
-            "   initial = receive(self); \n" +
+            "   counter = receive(self); \n" +
+            "   value = resource(\"/value\"); \n" +
+            "   inc = resource(\"/inc\"); \n" +
+            "   dec = resource(\"/dec\"); \n" +
+            "   scope { \n" +
+            "       while(counter>0) { \n" +
+            "           wait(\"PT1S\"); \n" +
+            "       } \n" +
+            "   } onQuery(self) {\n" +
+            "       links = <counter></counter>; \n" +
+            "       links.increment = inc; \n" +
+            "       links.decrement = dec; \n" +
+            "       links.value = value; \n" +
+            "       reply(); \n" +
+            "   } onQuery(value) {\n" +
+            "       reply(counter) \n" +
+            "   } \n" +
             "}";
 
 

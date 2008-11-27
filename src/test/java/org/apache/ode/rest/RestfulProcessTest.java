@@ -31,12 +31,13 @@ public class RestfulProcessTest extends TestCase {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
 
-        WebResource wr = c.resource("http://localhost:3033");
+        WebResource wr = c.resource("http://localhost:3434");
         String processes = wr.path("/").accept("application/xml").get(String.class);
         System.out.println("=> " + processes);
         assertTrue(processes.indexOf("/hello") > 0);
 
         // Check different representations (html, xml)
         // Links to instance list search, process start url, process start form
+        server.stop();
     }
 }

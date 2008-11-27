@@ -248,7 +248,16 @@ rvalue	:	receive | invoke | resource | expr | xmlElement;
 	
 throw_ex:	^(THROW ns_id);
 
-wait_ex	:	^(WAIT expr);
+wait_ex
+scope ExprContext;
+    :	^(WAIT {
+            $ExprContext::expr = new SimPELExpr(builder.getProcess());
+        }
+        e=(expr)) {
+            $ExprContext::expr.setExpr(deepText($e));
+		    OBuilder.StructuredActivity<OWait> wait =
+                builder.build(OWait.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
+        };
 
 exit	:	EXIT;
 

@@ -230,6 +230,13 @@ public class OBuilder extends BaseCompiler {
         return new SimpleActivity<OAssign>(oassign);
     }
 
+    public SimpleActivity buildWait(OWait owait, OScope oscope, SimPELExpr rexpr) {
+        // TODO time based computation to allow wait until
+        owait.forExpression = rexpr;
+        rexpr.expressionLanguage = _exprLang;
+        return new SimpleActivity<OWait>(owait);
+    }
+
     public SimpleActivity buildReply(OReply oreply, OScope oscope, OPickReceive oreceive,
                                      String var, String partnerLink, String operation) {
         oreply.variable = resolveVariable(oscope, var, operation, false);

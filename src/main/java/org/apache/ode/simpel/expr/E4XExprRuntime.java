@@ -120,7 +120,13 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
     }
 
     public Duration evaluateAsDuration(OExpression oExpression, EvaluationContext evaluationContext) throws FaultException {
-        return null;
+        String literal = this.evaluateAsString(oExpression, evaluationContext);
+        try {
+            return new Duration(literal);
+        } catch (Exception ex) {
+            String errmsg = "Invalid duration: " + literal;
+            throw new FaultException(oExpression.getOwner().constants.qnInvalidExpressionValue,errmsg);
+        }
     }
 
     public Node evaluateNode(OExpression oExpression, EvaluationContext evaluationContext) throws FaultException {

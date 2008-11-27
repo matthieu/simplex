@@ -16,6 +16,20 @@ import javax.xml.namespace.QName;
  */
 public class SimPELRuntimeTest extends TestCase {
 
+    EmbeddedServer server;
+
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        server = new EmbeddedServer();
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
+        server.stop();
+    }
+
     private static final String HELLO_WORLD =
             "process HelloWorld {\n" +
             "   receive(myPl, helloOp) { |msgIn|\n" +
@@ -25,7 +39,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testHelloWorld() throws Exception {
-        EmbeddedServer server = new EmbeddedServer();
         server.start();
         server.deploy(HELLO_WORLD);
 
@@ -48,7 +61,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testXmlData() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
         server.start();
         server.deploy(XML_DATA_MANIPULATION);
         Element wrapper = DOMUtils.stringToDOM(
@@ -84,7 +96,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testSimpleIf() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
         server.start();
         server.deploy(SIMPLE_IF);
         Element wrapper = DOMUtils.stringToDOM(
@@ -113,7 +124,6 @@ public class SimPELRuntimeTest extends TestCase {
     public void testInvokeOneWay() throws Exception {
         final Boolean[] received = new Boolean[] { false };
 
-        EmbeddedServer server = new EmbeddedServer();
         server.options.setMessageSender(new MessageSender() {
             public Node send(String recipient, String operation, Node message) {
                 if (recipient.equals("partnerPl") && operation.equals("partnerOp")
@@ -148,7 +158,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testInvokeTwoWays() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
         server.options.setMessageSender(new MessageSender() {
             public Node send(String recipient, String operation, Node elmt) {
                 if (recipient.equals("calculator") && operation.equals("add")) {
@@ -185,7 +194,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testJSState() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
         server.start();
         server.deploy(JS_GLOBAL_STATE);
 
@@ -214,7 +222,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testSimpleCorrelation() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
         server.start();
         server.deploy(SIMPLE_CORRELATION);
 
@@ -250,7 +257,6 @@ public class SimPELRuntimeTest extends TestCase {
             "}";
 
     public void testWhile() throws Exception {
-        EmbeddedServer server = new  EmbeddedServer();
         server.start();
         server.deploy(WHILE_LOOP);
 
@@ -261,6 +267,26 @@ public class SimPELRuntimeTest extends TestCase {
         Element result = server.sendMessage("myPl", "firstOp", wrapper);
         System.out.println(":: " + DOMUtils.domToString(result));
         assertTrue(DOMUtils.domToString(result).indexOf("6765") > 0);
+    }
+
+    private static final String WAIT =
+            "process WaitProcess {\n" +
+            "   receive(myPl, helloOp) { |msgIn|\n" +
+            "       wait(\"PT1S\");\n" +
+            "       reply(msgIn);\n" +
+            "   }\n" +
+            "}";
+
+    public void testWait() throws Exception {
+        server.start();
+        server.deploy(WAIT);
+
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition/WaitProcess", "helloOpRequest");
+        wrapper.setTextContent("Hello");
+
+        Element result = server.sendMessage("myPl", "helloOp", wrapper);
+        assertTrue(DOMUtils.domToString(result).indexOf("Hello") > 0);
     }
 
 }
