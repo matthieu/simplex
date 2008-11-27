@@ -218,8 +218,10 @@ reply
 receive	
 scope ReceiveBlock;
 	:	^(RECEIVE ^(p=ID o=ID? correlation?) {
+	        // The receive input is the lvalue of the assignment expression in which this receive is enclosed (if it is)
             OBuilder.StructuredActivity<OPickReceive> rec = builder.build(OPickReceive.class, $BPELScope::oscope,
-                $Parent::activity, text($p), text($o));
+                $Parent::activity, text($p), text($o), $ExprContext::expr);
+
 		    $ReceiveBlock::activity = rec.getOActivity();
             // TODO support for multiple "correlations"
             if ($correlation.corr != null) builder.addCorrelationMatch($ReceiveBlock::activity, $correlation.corr); 
@@ -236,7 +238,7 @@ scope ExprContext;
     }
     rv=(rvalue)) {
         $ExprContext::expr.setExpr(deepText($rv));
-        if (!"RESOURCE".equals($rv.getText())) {
+        if (!"RESOURCE".equals($rv.getText()) && !"RECEIVE".equals($rv.getText())) {
 		    OBuilder.StructuredActivity<OAssign> assign =
                 builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
             // The long, winding road of abstraction

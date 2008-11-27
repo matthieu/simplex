@@ -289,4 +289,23 @@ public class SimPELRuntimeTest extends TestCase {
         assertTrue(DOMUtils.domToString(result).indexOf("Hello") > 0);
     }
 
+    private static final String RECEIVE_ASSIGN =
+            "process ReceiveAssign {\n" +
+            "   msgIn = receive(myPl, helloOp); \n" +
+            "   msgOut = msgIn + \" World\";\n" +
+            "   reply(msgOut, myPl, helloOp);\n" +
+            "}";
+
+    public void testReceiveAssign() throws Exception {
+        server.start();
+        server.deploy(RECEIVE_ASSIGN);
+
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition/ReceiveAssign", "helloOpRequest");
+        wrapper.setTextContent("Hello");
+
+        Element result = server.sendMessage("myPl", "helloOp", wrapper);
+        assertTrue(DOMUtils.domToString(result).indexOf("Hello World") > 0);
+    }
+
 }

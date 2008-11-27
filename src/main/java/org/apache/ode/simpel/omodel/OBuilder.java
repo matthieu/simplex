@@ -161,7 +161,8 @@ public class OBuilder extends BaseCompiler {
         };
     }
 
-    public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLinkOrResource, String operation) {
+    public SimpleActivity buildPickReceive(OPickReceive receive, OScope oscope, String partnerLinkOrResource,
+                                           String operation, SimPELExpr expr) {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
         if (operation == null) {
             onMessage.resource = webResources.get(partnerLinkOrResource);
@@ -179,6 +180,12 @@ public class OBuilder extends BaseCompiler {
             receive.createInstanceFlag = true;
             _oprocess.firstReceive = receive;
             if (onMessage.resource != null) onMessage.resource.setInstantiateResource(true);
+        }
+
+        // Is this receive part of an assignment? In this case the input var is the lvalue.
+        if (expr != null) {
+            onMessage.variable = resolveVariable(oscope, expr.getLValue(),
+                    onMessage.operation != null ? onMessage.operation.getName() : null, true);
         }
 
         onMessage.activity = new OEmpty(_oprocess, receive);
