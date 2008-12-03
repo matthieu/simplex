@@ -11,6 +11,7 @@ import com.sun.jersey.api.client.ClientResponse;
 
 import javax.ws.rs.core.Response;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class RestfulSimPELTest extends TestCase {
 
@@ -52,7 +53,7 @@ public class RestfulSimPELTest extends TestCase {
             "   dec = resource(\"/dec\"); \n" +
             "   scope { \n" +
             "       while(counter>0) { \n" +
-            "           wait(\"PT1S\"); \n" +
+            "           wait(\"PT1S\"); \n" + // TODO support time as well as duration
             "       } \n" +
             "   } onQuery(self) {\n" +
             "       links = <counter></counter>; \n" +
@@ -64,6 +65,9 @@ public class RestfulSimPELTest extends TestCase {
             "       reply(counter); \n" +
             "   } onReceive(dec) {\n" +
             "       counter = counter - 1; \n" +
+            "       reply(counter); \n" +
+            "   } onReceive(inc) {\n" +
+            "       counter = counter - (-1); \n" + // TODO fix the - - hack
             "       reply(counter); \n" +
             "   } \n" +
             "}";
@@ -78,18 +82,78 @@ public class RestfulSimPELTest extends TestCase {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
 
-        WebResource wr = c.resource("http://localhost:3434/counter");
+        // Starting the counter process
+        WebResource wr = c.resource("http://localhost:3434/counter"); // TODO default on process name
         ClientResponse createResponse = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/Counter\">5</simpelWrapper>");
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/Counter\">3</simpelWrapper>");
         String response = createResponse.getEntity(String.class);
-        System.out.println("=> " + response);
-        System.out.println("=> " + createResponse.getMetadata().get("Location").get(0));
-
         String location = createResponse.getMetadata().get("Location").get(0);
+        // TODO status = 201
+        assertTrue(location.matches(".*/counter/[0-9]*$"));
+        assertTrue(response.indexOf("3") > 0);
+
+        // Requesting links
         WebResource instance = c.resource(location);
         ClientResponse queryResponse = instance.path("/").type("application/xml").get(ClientResponse.class);
-        System.out.println("=> " + queryResponse.getStatus());
-        System.out.println("=> " + queryResponse.getEntity(String.class));
+        response = queryResponse.getEntity(String.class);
+
+        Matcher m = Pattern.compile("/counter/[0-9]*/value").matcher(response);
+        assertTrue(m.find());
+        m = Pattern.compile("/counter/[0-9]*/dec").matcher(response);
+        assertTrue(m.find());
+        assertTrue(queryResponse.getStatus() == 200);
+
+        // Requesting counter value to check the initial is correct
+        ClientResponse valueResponse = instance.path("/value").type("application/xml").get(ClientResponse.class);
+        response = valueResponse.getEntity(String.class);
+        assertTrue(valueResponse.getStatus() == 200);
+        assertTrue(response.indexOf("3") > 0);
+
+        // Incrementing twice
+        ClientResponse incResponse;
+        for (int n = 0; n < 2; n++) {
+            incResponse = instance.path("/inc").type("application/xml").post(ClientResponse.class);
+            response = incResponse.getEntity(String.class);
+            assertTrue(incResponse.getStatus() == 200);
+            System.out.println("=> " + response);
+            assertTrue(response.indexOf(""+(4+n)) > 0);
+        }
+
+        // Checking value again, should be 5 now
+        valueResponse = instance.path("/value").type("application/xml").get(ClientResponse.class);
+        response = valueResponse.getEntity(String.class);
+        assertTrue(valueResponse.getStatus() == 200);
+        assertTrue(response.indexOf("5") > 0);
+
+        // Decrementing counter to 0 to let process complete
+        ClientResponse decResponse;
+        for (int n = 0; n < 5; n++) {
+            decResponse = instance.path("/dec").type("application/xml").post(ClientResponse.class);
+            response = decResponse.getEntity(String.class);
+            assertTrue(valueResponse.getStatus() == 200);
+            assertTrue(response.indexOf(""+(4-n)) > 0);
+        }
+
+        // The process shouldn't be here anymore
+        Thread.sleep(1500);
+        queryResponse = instance.path("/").type("application/xml").get(ClientResponse.class);
+        assertTrue(queryResponse.getStatus() == 410);
+//        response = queryResponse.getEntity(String.class);
+//        System.out.println("=> " + response);
+//        System.out.println("=> " + queryResponse.getStatus());
+
+
+        // Decrementing counter
+//        ClientResponse decResponse = instance.path("/dec").type("application/xml").post(ClientResponse.class);
+//        response = decResponse.getEntity(String.class);
+//        assertTrue(valueResponse.getStatus() == 200);
+//        assertTrue(response.indexOf("4") > 0);
+//
+//        // Incrementing counter
+//        ClientResponse incResponse = instance.path("/inc").type("application/xml").post(ClientResponse.class);
+//        response = incResponse.getEntity(String.class);
+//        assertTrue(valueResponse.getStatus() == 200);
+//        assertTrue(response.indexOf("5") > 0);
 
         server.stop();
     }

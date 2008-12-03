@@ -49,7 +49,7 @@ public class BindingContextImpl implements BindingContext {
     }
 
     public void deactivateProvidedResource(Resource resource) {
-
+        EngineWebResource.unregisterResource(resource);
     }
 
     public PartnerRoleChannel createPartnerRoleChannel(QName qName, PortType portType, Endpoint endpoint) {

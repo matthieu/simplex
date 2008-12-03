@@ -6,8 +6,9 @@ import com.sun.jersey.api.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.GET;
 import javax.ws.rs.Produces;
-import javax.ws.rs.PathParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.Response;
 
 import org.mortbay.jetty.servlet.ServletHolder;
 import org.mortbay.jetty.servlet.Context;
@@ -18,7 +19,6 @@ import org.apache.ode.utils.DOMUtils;
 import org.apache.ode.bpel.iapi.Resource;
 import org.apache.ode.embed.ServerLifecycle;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Path("/")
@@ -67,7 +67,9 @@ public class EngineWebResource {
     public ProcessWebResource buildProcessResource(@javax.ws.rs.core.Context UriInfo subpath) {
         // TODO This should be able to match based on a pattern
         ResourceDesc rdesc = _engineResources.get(stripSlashes(subpath.getPath()));
-        if (rdesc == null) throw new NotFoundException("Resource " + subpath.getPath() + " is unknown.");
+        if (rdesc == null) throw new NotFoundException("No known resource at this location.");
+        else if (rdesc.removed) throw new WebApplicationException(Response.status(410)
+                .entity("The resource isn't available anymore.").type("text/plain").build());
         else {
             String base = subpath.getBaseUri().toString();
             return new ProcessWebResource(rdesc, _serverLifecyle, base.substring(0, base.length()-1));
@@ -89,6 +91,12 @@ public class EngineWebResource {
             _engineResources.put(nonSlashed, desc);
         }
         desc.enable(resource.getMethod());
+    }
+
+    public static void unregisterResource(Resource resource) {
+        ResourceDesc rdesc = _engineResources.get(stripSlashes(resource.getUrl()));
+        rdesc.removed = true;
+        // TODO eventually cleanup removed resources after a while
     }
 
     public static void startRestfulServer(ServerLifecycle serverLifecyle) {
@@ -128,6 +136,7 @@ public class EngineWebResource {
         boolean post;
         boolean put;
         boolean delete;
+        boolean removed;
 
         public Resource toResource(String method) {
             return new Resource("/"+resourcePath, contentType, method);

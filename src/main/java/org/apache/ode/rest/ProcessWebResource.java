@@ -52,32 +52,29 @@ public class ProcessWebResource {
         else return Response.status(405).header("Allow", _resource.methods()).build();
     }
 
-    @GET @Produces("application/xml") @Path("{subpath}")
-    public Response getSub() {
-        return get();
-    }
-
     @POST @Consumes("application/xml")
     public Response post(String content) {
         if (_resource.post) {
             RESTMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
                     _resource.toResource("POST"), new GUID().toString());
             Message request = mex.createMessage(null);
-            try {
-                // TODO support for http headers and parameters as additional parts
-                Element msgElmt = DOMUtils.stringToDOM(content);
-                Document doc = DOMUtils.newDocument();
-                Element docElmt = doc.createElement("document");
-                Element partElmt = doc.createElement("payload");
-                doc.appendChild(docElmt);
-                docElmt.appendChild(partElmt);
-                partElmt.appendChild(doc.importNode(msgElmt, true));
+            if (content.length() > 0) {
+                try {
+                    // TODO support for http headers and parameters as additional parts
+                    Element msgElmt = DOMUtils.stringToDOM(content);
+                    Document doc = DOMUtils.newDocument();
+                    Element docElmt = doc.createElement("document");
+                    Element partElmt = doc.createElement("payload");
+                    doc.appendChild(docElmt);
+                    docElmt.appendChild(partElmt);
+                    partElmt.appendChild(doc.importNode(msgElmt, true));
 
-                request.setMessage(docElmt);
-            } catch (Exception e) {
-                return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
+                    request.setMessage(docElmt);
+                } catch (Exception e) {
+                    return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
+                }
+                mex.setRequest(request);
             }
-            mex.setRequest(request);
             try {
                 mex.invokeBlocking();
             } catch (java.util.concurrent.TimeoutException te) {
@@ -98,8 +95,35 @@ public class ProcessWebResource {
         else return Response.status(405).header("Allow", _resource.methods()).build();
     }
 
+    // This sucks big time
+
+    @GET @Produces("application/xml") @Path("{subpath}")
+    public Response getSub() {
+        return get();
+    }
+
+    @GET @Produces("application/xml") @Path("{subpath}/{sub1}")
+    public Response getSubSub() {
+        return get();
+    }
+
+    @GET @Produces("application/xml") @Path("{subpath}/{sub1}/{sub2}")
+    public Response getSubSubSub() {
+        return get();
+    }
+
     @POST @Consumes("application/xml") @Path("{subpath}")
     public Response postSub(String content) {
+        return post(content);
+    }
+
+    @POST @Consumes("application/xml") @Path("{subpath}/{sub1}")
+    public Response postSubSub(String content) {
+        return post(content);
+    }
+
+    @POST @Consumes("application/xml") @Path("{subpath}/{sub1}/{sub2}")
+    public Response postSubSubSub(String content) {
         return post(content);
     }
 

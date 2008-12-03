@@ -20,12 +20,11 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * TODO foo = receive(...) expressions
  * TODO e4x templates
  * TODO allow javascript blocks instead of just hooking on equal, otherwise you can't do stuff like
  *          operations.appendChild(<operand>2</operand>);
  *          operations.appendChild(<operand>3</operand>);
- * TODO support generic variable declarations that aren't mapped to a property (unique)
+ * TODO resources aren't available if they're not used
  */
 public class OBuilder extends BaseCompiler {
     private static final Logger __log = Logger.getLogger(OBuilder.class);
