@@ -1,19 +1,15 @@
 package org.apache.ode.rest;
 
-import org.apache.ode.bpel.iapi.Resource;
-import org.apache.ode.bpel.iapi.RESTMessageExchange;
 import org.apache.ode.bpel.iapi.Message;
+import org.apache.ode.bpel.iapi.RESTInMessageExchange;
 import org.apache.ode.embed.ServerLifecycle;
 import org.apache.ode.utils.GUID;
 import org.apache.ode.utils.DOMUtils;
-import org.xml.sax.SAXException;
 import org.w3c.dom.Element;
 import org.w3c.dom.Document;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
-import javax.xml.namespace.QName;
-import java.io.IOException;
 
 public class ProcessWebResource {
 
@@ -30,7 +26,7 @@ public class ProcessWebResource {
     @GET @Produces("application/xml")
     public Response get() {
         if (_resource.get) {
-            RESTMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
+            RESTInMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
                     _resource.toResource("GET"), new GUID().toString());
             try {
                 mex.invokeBlocking();
@@ -55,7 +51,7 @@ public class ProcessWebResource {
     @POST @Consumes("application/xml")
     public Response post(String content) {
         if (_resource.post) {
-            RESTMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
+            RESTInMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
                     _resource.toResource("POST"), new GUID().toString());
             Message request = mex.createMessage(null);
             if (content.length() > 0) {

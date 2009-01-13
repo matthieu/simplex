@@ -9,7 +9,7 @@ tokens {
     ROOT; PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
     RESOURCE;
-    ONEVENT; ONALARM; ONRECEIVE; ONUPDATE; ONQUERY; COMPENSATION; COMPENSATE;
+    REQUEST; ONEVENT; ONALARM; ONRECEIVE; ONUPDATE; ONQUERY; COMPENSATION; COMPENSATE;
     CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM;
     SIGNAL; JOIN; WITH; MAP;
     EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
@@ -96,7 +96,7 @@ process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
-		| receive | invoke | ((reply | assign | throw_ex | wait_ex | exit | signal | join
+		| receive | invoke | request | ((reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables | partner_link) SEMI!);
 
 block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
@@ -158,10 +158,17 @@ receive_base
 
 reply	:	'reply' '(' ID (',' ID (',' ID)?)? ')' -> ^(REPLY ID (ID ID?)?);
 
+request
+options {backtrack=true;}
+        :	request_base SEMI -> ^(REQUEST request_base)
+            | request_base param_block -> ^(REQUEST request_base) param_block;
+request_base
+        :	'request' '(' expr (',' meth=STRING (',' msg=ID)?)? ')' -> ^(expr $meth? $msg?);
+
 assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue
 	    :	receive_base -> ^(RECEIVE receive_base)
-		    | invoke | resource | expr | xml_literal;
+		    | invoke | request | resource | expr | xml_literal;
 	
 throw_ex:	'throw' '('? ns_id ')'? -> ^(THROW ns_id);
 

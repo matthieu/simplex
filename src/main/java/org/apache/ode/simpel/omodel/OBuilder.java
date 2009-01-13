@@ -168,6 +168,7 @@ public class OBuilder extends BaseCompiler {
         OPickReceive.OnMessage onMessage = new OPickReceive.OnMessage(_oprocess);
         if (operation == null) {
             onMessage.resource = copyResource(webResources.get(partnerLinkOrResource), "POST");
+            onMessage.resource.setInbound(true);
             if (onMessage.resource == null)
                 throw new RuntimeException("Unknown resource declared in receive: " + partnerLinkOrResource);
             _oprocess.providedResources.add(onMessage.resource);
@@ -211,11 +212,45 @@ public class OBuilder extends BaseCompiler {
         };
     }
 
-    public SimpleActivity buildInvoke(OInvoke invoke, OScope oscope, String partnerLink,
-                                      String operation, String incomingMsg) {
-        invoke.partnerLink = buildPartnerLink(oscope, partnerLink, operation, false, incomingMsg != null);
-        invoke.operation = invoke.partnerLink.partnerRolePortType.getOperation(operation, null, null);
-        if (incomingMsg != null) invoke.inputVar = resolveVariable(oscope, incomingMsg, operation, true);
+    public SimpleActivity buildInvoke(OInvoke invoke, OScope oscope, Object exprOrPlink, String methOrOp, String inputMsg, SimPELExpr outputMsg) {
+        if (exprOrPlink instanceof SimPELExpr) return buildRequest(invoke, oscope, (SimPELExpr) exprOrPlink, methOrOp, inputMsg, outputMsg);
+        else return buildWSInvoke(invoke, oscope, (String) exprOrPlink, methOrOp, inputMsg, outputMsg);
+    }
+
+    public SimpleActivity buildRequest(OInvoke invoke, OScope oscope, SimPELExpr expr, String method, String outgoingMsg, SimPELExpr responseMsg) {
+        if (method != null && (!method.equalsIgnoreCase("get") || method.equalsIgnoreCase("put")
+                 || method.equalsIgnoreCase("post") || method.equalsIgnoreCase("delete")))
+            throw new RuntimeException("Invalid HTTP method: " + method);
+
+        // TODO hack warning: because of the way deepText works in SimPELWalker, the expr we get is the whole thing
+        // i.e. request(foo+"/order"), the expr should be changed to return its string instead of the following
+        String exprStr = expr.getExpr();
+        int openParens = exprStr.indexOf("(");
+        int closeExpr = Math.max(exprStr.indexOf(")"), exprStr.indexOf(","));
+        expr.setExpr(exprStr.substring(openParens+1, closeExpr));
+        expr.expressionLanguage = _exprLang;
+
+        invoke.resource = new OResource(_oprocess);
+        invoke.resource.setSubpath(expr);
+        invoke.resource.setMethod(method == null ? "get" : method);
+        invoke.resource.setInbound(false);
+        invoke.resource.setDeclaringScope(oscope);
+        if (outgoingMsg != null)
+            invoke.inputVar = resolveVariable(oscope, outgoingMsg, null, true);
+        if (responseMsg != null)
+            invoke.outputVar = resolveVariable(oscope, responseMsg.getLValue(), null, false);
+
+        return new SimpleActivity<OInvoke>(invoke);
+    }
+
+    public SimpleActivity buildWSInvoke(OInvoke invoke, OScope oscope, String plink, String op, String outgoingMsg, SimPELExpr responseMsg) {
+        invoke.partnerLink = buildPartnerLink(oscope, plink, op, false, outgoingMsg != null);
+        invoke.operation = invoke.partnerLink.partnerRolePortType.getOperation(op, null, null);
+
+        if (outgoingMsg != null)
+            invoke.inputVar = resolveVariable(oscope, outgoingMsg, invoke.operation.getName(), true);
+        if (responseMsg != null)
+            invoke.outputVar = resolveVariable(oscope, responseMsg.getLValue(), invoke.operation.getName(), false);
 
         return new SimpleActivity<OInvoke>(invoke);
     }
@@ -302,10 +337,8 @@ public class OBuilder extends BaseCompiler {
             }
         } else if (oact instanceof OInvoke) {
             OInvoke inv = (OInvoke)oact;
-            inv.outputVar = resolveVariable(oscope, varName, inv.operation.getName(), false);
-            buildPartnerLink(oscope, inv.partnerLink.name, inv.operation.getName(), false, false);
-        } else if (oact instanceof OCollect) {
-            OCollect collect = (OCollect)oact;
+            inv.outputVar = resolveVariable(oscope, varName, inv.operation != null ? inv.operation.getName() : null, false);
+            buildPartnerLink(oscope, inv.partnerLink.name, inv.operation != null ? inv.operation.getName() : null, false, false);
         } else __log.warn("Can't set block parameter on activity " + oact);
     }
 

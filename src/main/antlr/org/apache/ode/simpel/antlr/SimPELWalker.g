@@ -228,7 +228,7 @@ invoke
 scope ReceiveBlock;
     :	^(INVOKE ^(p=ID o=ID in=ID?)) {
             OBuilder.StructuredActivity<OInvoke> inv = builder.build(OInvoke.class, $BPELScope::oscope,
-                $Parent::activity, text($p), text($o), text($in));
+                $Parent::activity, text($p), text($o), text($in), null);
             $ReceiveBlock::activity = inv.getOActivity();
         }
         (prb=(param_block))?;
@@ -259,6 +259,26 @@ scope ReceiveBlock;
             if ($correlation.corr != null) builder.addCorrelationMatch(rec.getOActivity(), $correlation.corr); 
 		} )
 		(prb=(param_block))?;
+request
+scope ReceiveBlock ExprContext;
+    :	^(REQUEST {
+            $ExprContext::expr = new SimPELExpr(builder.getProcess());
+        }
+        ^(e=(expr) (meth=STRING msg=ID?)?)) {
+            $ExprContext::expr.setExpr(deepText($e));
+
+	        // The request output is the lvalue of the assignment expression in which this request is enclosed (if it is)
+	        OBuilder.StructuredActivity<OInvoke> inv;
+	        if (ExprContext_stack.size() > 1)
+                inv = builder.build(OInvoke.class, $BPELScope::oscope,
+                    $Parent::activity, $ExprContext::expr, text($meth), text($msg), $ExprContext[-1]::expr);
+            else
+                inv = builder.build(OInvoke.class, $BPELScope::oscope,
+                    $Parent::activity, $ExprContext::expr, text($meth), text($msg), null);
+
+            $ReceiveBlock::activity = inv.getOActivity();
+        }
+        (prb=(param_block))?;
 
 assign	
 scope ExprContext;
@@ -270,7 +290,7 @@ scope ExprContext;
     }
     rv=(rvalue)) {
         $ExprContext::expr.setExpr(deepText($rv));
-        if (!"RESOURCE".equals($rv.getText()) && !"RECEIVE".equals($rv.getText())) {
+        if (!"RESOURCE".equals($rv.getText()) && !"RECEIVE".equals($rv.getText()) && !"REQUEST".equals($rv.getText())) {
 		    OBuilder.StructuredActivity<OAssign> assign =
                 builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
             // The long, winding road of abstraction
@@ -278,7 +298,7 @@ scope ExprContext;
                 getOActivity().operations.get(0)).from).expression;
         }
     };
-rvalue	:	receive | invoke | resource | expr | xmlElement;
+rvalue	:	receive | invoke | request | resource | expr | xmlElement;
 	
 throw_ex:	^(THROW ns_id);
 

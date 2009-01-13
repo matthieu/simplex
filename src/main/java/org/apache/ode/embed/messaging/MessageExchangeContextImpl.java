@@ -7,6 +7,7 @@ import org.apache.log4j.Logger;
 import org.w3c.dom.Element;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
 import javax.wsdl.Operation;
 import javax.wsdl.Fault;
@@ -14,6 +15,13 @@ import javax.wsdl.Part;
 import javax.xml.namespace.QName;
 import java.util.Set;
 import java.util.HashSet;
+import java.io.IOException;
+
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.ClientResponse;
 
 public class MessageExchangeContextImpl implements MessageExchangeContext {
 
@@ -36,18 +44,8 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         Operation invokedOp = partnerMex.getPortType().getOperation(partnerMex.getOperationName(), null, null);
         try {
             // We're placing ourselves in the doc/lit case for now, assuming a single part with a single root element
-            Element message = partnerMex.getRequest().getMessage();
-            Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(message));
-            // TODO this assumption only works with SimPEL, in the general case we could have a NodeList
-            // and should therefore send the whole part element
-            Node payload;
-            if (DOMUtils.getFirstChildElement(root) != null)
-                payload = DOMUtils.getFirstChildElement(root);
-            else {
-                Document doc = DOMUtils.newDocument();
-                payload = doc.createTextNode(DOMUtils.getTextContent(root));
-            }
-            Node response = _sender.send(partnerMex.getPortType().getQName().getLocalPart(), invokedOp.getName(), payload);
+            Node response = _sender.send(partnerMex.getPortType().getQName().getLocalPart(),
+                    invokedOp.getName(), unwrapToPayload(partnerMex.getRequest().getMessage()));
 
             if (invokedOp.getOutput() != null) {
                 Document responseDoc = DOMUtils.newDocument();
@@ -99,6 +97,47 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    public void invokeRestful(RESTOutMessageExchange restOutMessageExchange) throws ContextException {
+        Resource res = restOutMessageExchange.getTargetResource();
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        ClientResponse resp;
+        WebResource.Builder wr = c.resource(res.getUrl()).path("/").accept(res.getContentType()).type(res.getContentType());
+        if (restOutMessageExchange.getRequest() != null) {
+            resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class,
+                    DOMUtils.domToString(unwrapToPayload(restOutMessageExchange.getRequest().getMessage())));
+        } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
+
+        // TODO check status
+        String response = resp.getEntity(String.class);
+        Element responseXML;
+        try {
+            responseXML = DOMUtils.stringToDOM(response);
+        } catch (Exception e) {
+            Document doc = DOMUtils.newDocument();
+            Element failureElmt = doc.createElement("requestFailure");
+            failureElmt.setTextContent(response);
+            restOutMessageExchange.replyWithFailure(MessageExchange.FailureType.FORMAT_ERROR,
+                    "Can't parse the response to " + res.getUrl(), failureElmt);
+            return;
+        }
+
+        Document odeMsg = DOMUtils.newDocument();
+        Element odeMsgEl = odeMsg.createElementNS(null, "message");
+        odeMsg.appendChild(odeMsgEl);
+        Element partElmt = odeMsg.createElement("payload");
+        odeMsgEl.appendChild(partElmt);
+        Element methodElmt = odeMsg.createElement(res.getMethod() + "Response");
+        partElmt.appendChild(methodElmt);
+        methodElmt.appendChild(odeMsg.adoptNode(responseXML));
+
+        Message responseMsg = restOutMessageExchange.createMessage(null);
+        responseMsg.setMessage(odeMsgEl);
+        restOutMessageExchange.reply(responseMsg);
+    }
+
     public void cancel(PartnerRoleMessageExchange partnerRoleMessageExchange) throws ContextException {
         //To change body of implemented methods use File | Settings | File Templates.
     }
@@ -112,5 +151,19 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         // TODO only unreliable for now, we might want to do transactional at a point
         styles.add(InvocationStyle.UNRELIABLE);
         return styles;
+    }
+
+    private Node unwrapToPayload(Element message) {
+        Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(message));
+        // TODO this assumption only works with SimPEL, in the general case we could have a NodeList
+        // and should therefore send the whole part element
+        Node payload;
+        if (DOMUtils.getFirstChildElement(root) != null)
+            payload = DOMUtils.getFirstChildElement(root);
+        else {
+            Document doc = DOMUtils.newDocument();
+            payload = doc.createTextNode(DOMUtils.getTextContent(root));
+        }
+        return payload;
     }
 }

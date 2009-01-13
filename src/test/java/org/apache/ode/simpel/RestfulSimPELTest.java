@@ -44,6 +44,34 @@ public class RestfulSimPELTest extends TestCase {
         server.stop();
     }
 
+    public static final String CALLING_GET =
+            "var feedBUrl = \"http://feeds.feedburner.com/\"; " +
+            "process CallingGet {\n" +
+            "   receive(self) { |query|\n" +
+            "       feed = request(feedBUrl + query);\n" +
+            "       title = feed.channel.title;\n" +
+            "       reply(title);\n" +
+            "   }\n" +
+            "}";
+
+    public void testCallingGet() throws Exception {
+        EmbeddedServer server = new EmbeddedServer();
+        server.start();
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/feedget");
+        server.deploy(CALLING_GET, desc);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/feedget");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/CallingGet\">OffTheLip</simpelWrapper>");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("Off The Lip") > 0);
+    }
+
     private static final String COUNTER =
             "process Counter {\n" +
             "   counter = receive(self); \n" +
