@@ -44,34 +44,6 @@ public class RestfulSimPELTest extends TestCase {
         server.stop();
     }
 
-    public static final String CALLING_GET =
-            "var feedBUrl = \"http://feeds.feedburner.com/\"; " +
-            "process CallingGet {\n" +
-            "   receive(self) { |query|\n" +
-            "       feed = request(feedBUrl + query);\n" +
-            "       title = feed.channel.title;\n" +
-            "       reply(title);\n" +
-            "   }\n" +
-            "}";
-
-    public void testCallingGet() throws Exception {
-        EmbeddedServer server = new EmbeddedServer();
-        server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/feedget");
-        server.deploy(CALLING_GET, desc);
-
-        ClientConfig cc = new DefaultClientConfig();
-        Client c = Client.create(cc);
-
-        WebResource wr = c.resource("http://localhost:3434/feedget");
-        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/CallingGet\">OffTheLip</simpelWrapper>");
-        String response = resp.getEntity(String.class);
-        System.out.println("=> " + response);
-        assertTrue(response.indexOf("Off The Lip") > 0);
-    }
-
     private static final String COUNTER =
             "process Counter {\n" +
             "   counter = receive(self); \n" +
@@ -166,23 +138,65 @@ public class RestfulSimPELTest extends TestCase {
         Thread.sleep(1500);
         queryResponse = instance.path("/").type("application/xml").get(ClientResponse.class);
         assertTrue(queryResponse.getStatus() == 410);
-//        response = queryResponse.getEntity(String.class);
-//        System.out.println("=> " + response);
-//        System.out.println("=> " + queryResponse.getStatus());
-
-
-        // Decrementing counter
-//        ClientResponse decResponse = instance.path("/dec").type("application/xml").post(ClientResponse.class);
-//        response = decResponse.getEntity(String.class);
-//        assertTrue(valueResponse.getStatus() == 200);
-//        assertTrue(response.indexOf("4") > 0);
-//
-//        // Incrementing counter
-//        ClientResponse incResponse = instance.path("/inc").type("application/xml").post(ClientResponse.class);
-//        response = incResponse.getEntity(String.class);
-//        assertTrue(valueResponse.getStatus() == 200);
-//        assertTrue(response.indexOf("5") > 0);
 
         server.stop();
+    }
+    
+    public static final String CALLING_GET =
+            "var feedBUrl = \"http://feeds.feedburner.com/\"; " +
+            "process CallingGet {\n" +
+            "   receive(self) { |query|\n" +
+            "       feed = request(feedBUrl + query);\n" +
+            "       title = feed.channel.title;\n" +
+            "       reply(title);\n" +
+            "   }\n" +
+            "}";
+
+    public void testCallingGet() throws Exception {
+        EmbeddedServer server = new EmbeddedServer();
+        server.start();
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/feedget");
+        server.deploy(CALLING_GET, desc);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/feedget");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/CallingGet\">OffTheLip</simpelWrapper>");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("Off The Lip") > 0);
+    }
+
+    public static final String GET_PUT_POST_DELETE =
+            "var testRoot = \"http://localhost:3434/test/gppd/\"; " +
+            "process AllMethods {\n" +
+            "   receive(self) { |query|\n" +
+            "       getRes = request(testRoot);\n" +
+            "       res = getRes.text();\n" +
+            "       postMsg = <foo>foo</foo>;\n" +
+            "       postRes = request(testRoot, \"post\", postMsg);\n" +
+            "       res = res + postRes.text();\n" +
+            "       reply(res);\n" +
+            "   }\n" +
+            "}";
+
+    public void testAllMethods() throws Exception {
+        EmbeddedServer server = new EmbeddedServer();
+        server.start();
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/gppd");
+        server.deploy(GET_PUT_POST_DELETE, desc);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/gppd");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/AllMethods\"></simpelWrapper>");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
     }
 }

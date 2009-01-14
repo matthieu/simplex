@@ -64,18 +64,18 @@ import org.apache.ode.simpel.ErrorListener;
     }
     
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-    	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+    	  el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
     }
     
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-	List stack = getRuleInvocationStack(e, this.getClass().getName());
-    	String msg = null;
-    	if ( e instanceof NoViableAltException ) {
+	      List stack = getRuleInvocationStack(e, this.getClass().getName());
+    	  String msg = null;
+    	  if ( e instanceof NoViableAltException ) {
        	    NoViableAltException nvae = (NoViableAltException)e;
        	    msg = " no viable alt; token="+e.token+" (decision="+nvae.decisionNumber+" state "+nvae.stateNumber+")"+
                   " decision=<<"+nvae.grammarDecisionDescription+">>";
         } else {
-           msg = super.getErrorMessage(e, tokenNames);
+            msg = super.getErrorMessage(e, tokenNames);
         }
         return stack+" "+msg;
     }
