@@ -6,9 +6,9 @@ process pns::LoanApproval {
   partnerLink customer, assessor, approver;
   try {
     parallel {
-      request = receive(customer, request);
-      signal(receive-to-assess, [$request.amount < 10000]);
-      signal(receive-to-approval, [$request.amount >= 10000]);
+      req = receive(customer, req);
+      signal(receive-to-assess, [$req.amount < 10000]);
+      signal(receive-to-approval, [$req.amount >= 10000]);
     } and {
       join(receive-to-assess);
       invoke(assessor, check) { |risk|
@@ -25,9 +25,9 @@ process pns::LoanApproval {
       signal(approval-to-reply);
     } and {
       join(approval-to-reply, setMessage-to-reply);
-      reply(customer, request, approval);
+      reply(customer, req, approval);
     }
   } catch(lns::loanProcessFault) { |error|
-    reply(customer, request, error);
+    reply(customer, req, error);
   }
 }

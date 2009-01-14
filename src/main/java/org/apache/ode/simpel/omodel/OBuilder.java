@@ -324,6 +324,9 @@ public class OBuilder extends BaseCompiler {
             __log.warn("Can't set block parameter with block parent activity " + blockActivity);
             return;
         }
+        // TODO block params for on** activities in scopes
+        if (blockActivity.getParent() instanceof OScope) return;
+
         List<OActivity> parentList = ((OSequence)blockActivity.getParent()).sequence;
         OActivity oact = parentList.get(parentList.indexOf(blockActivity) - 1);
         if (oact instanceof OPickReceive) {
