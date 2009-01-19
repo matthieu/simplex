@@ -208,6 +208,7 @@ public class SimPELRuntimeTest extends TestCase {
 
     private static final String SIMPLE_CORRELATION =
             "function getExchangeId(msg) { return msg.id; }; \n" +
+            "function getExchangeName(msg) { return msg.name; }; \n" +
             "\n" +
             "process SimpleCorrelation { \n" +
             "   var cid unique; \n" +

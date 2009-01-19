@@ -218,21 +218,16 @@ public class OBuilder extends BaseCompiler {
     }
 
     public SimpleActivity buildRequest(OInvoke invoke, OScope oscope, SimPELExpr expr, String method, String outgoingMsg, SimPELExpr responseMsg) {
-        if (method != null && (!method.equalsIgnoreCase("get") || method.equalsIgnoreCase("put")
-                 || method.equalsIgnoreCase("post") || method.equalsIgnoreCase("delete")))
+        if (method != null && (!method.equalsIgnoreCase("\"get\"") && !method.equalsIgnoreCase("\"put\"")
+                 && !method.equalsIgnoreCase("\"post\"") && !method.equalsIgnoreCase("\"delete\"")))
             throw new RuntimeException("Invalid HTTP method: " + method);
 
-        // TODO hack warning: because of the way deepText works in SimPELWalker, the expr we get is the whole thing
-        // i.e. request(foo+"/order"), the expr should be changed to return its string instead of the following
-        String exprStr = expr.getExpr();
-        int openParens = exprStr.indexOf("(");
-        int closeExpr = Math.max(exprStr.indexOf(")"), exprStr.indexOf(","));
-        expr.setExpr(exprStr.substring(openParens+1, closeExpr));
+        expr.setExpr(expr.getExpr());
         expr.expressionLanguage = _exprLang;
 
         invoke.resource = new OResource(_oprocess);
         invoke.resource.setSubpath(expr);
-        invoke.resource.setMethod(method == null ? "get" : method);
+        invoke.resource.setMethod(method == null ? "get" : method.substring(1, method.length() - 1));
         invoke.resource.setInbound(false);
         invoke.resource.setDeclaringScope(oscope);
         if (outgoingMsg != null)

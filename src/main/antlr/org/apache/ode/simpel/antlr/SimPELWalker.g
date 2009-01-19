@@ -98,7 +98,7 @@ scope BPELScope Parent;
 
 proc_stmt
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
-		| invoke | receive | reply | assign | throw_ex | wait_ex | exit | signal | join
+		| invoke | receive | request | reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variable | partner_link;
 block
 scope Parent;
@@ -264,7 +264,7 @@ scope ReceiveBlock ExprContext;
     :	^(REQUEST {
             $ExprContext::expr = new SimPELExpr(builder.getProcess());
         }
-        ^(e=(expr) (meth=STRING msg=ID?)?)) {
+        ^(REQ_BASE e=(expr) (meth=STRING (msg=ID)?)?)) {
             $ExprContext::expr.setExpr(deepText($e));
 
 	        // The request output is the lvalue of the assignment expression in which this request is enclosed (if it is)

@@ -110,6 +110,11 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
                     DOMUtils.domToString(unwrapToPayload(restOutMessageExchange.getRequest().getMessage())));
         } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
 
+        if (resp.getStatus() == 204) {
+            restOutMessageExchange.replyOneWayOk();
+            return;
+        }
+
         // TODO check status
         String response = resp.getEntity(String.class);
         Element responseXML;
@@ -119,6 +124,7 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             Document doc = DOMUtils.newDocument();
             Element failureElmt = doc.createElement("requestFailure");
             failureElmt.setTextContent(response);
+            __log.debug("Request to " + res.getUrl() + " failed, response couldn't be parsed: " + response);
             restOutMessageExchange.replyWithFailure(MessageExchange.FailureType.FORMAT_ERROR,
                     "Can't parse the response to " + res.getUrl(), failureElmt);
             return;

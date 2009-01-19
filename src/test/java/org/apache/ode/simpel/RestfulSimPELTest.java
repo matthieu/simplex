@@ -171,14 +171,21 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     public static final String GET_PUT_POST_DELETE =
-            "var testRoot = \"http://localhost:3434/test/gppd/\"; " +
+            "var testRoot = \"http://localhost:3434/gppd\"; " +
             "process AllMethods {\n" +
             "   receive(self) { |query|\n" +
             "       getRes = request(testRoot);\n" +
             "       res = getRes.text();\n" +
+
             "       postMsg = <foo>foo</foo>;\n" +
             "       postRes = request(testRoot, \"post\", postMsg);\n" +
             "       res = res + postRes.text();\n" +
+
+            "       putMsg = <bar>bar</bar>;\n" +
+            "       putRes = request(testRoot, \"put\", putMsg);\n" +
+            "       res = res + putRes.text();\n" +
+
+            "       request(testRoot, \"delete\");\n" +
             "       reply(res);\n" +
             "   }\n" +
             "}";
@@ -187,16 +194,17 @@ public class RestfulSimPELTest extends TestCase {
         EmbeddedServer server = new EmbeddedServer();
         server.start();
         Descriptor desc = new Descriptor();
-        desc.setAddress("/gppd");
+        desc.setAddress("/gppdproc");
         server.deploy(GET_PUT_POST_DELETE, desc);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
 
-        WebResource wr = c.resource("http://localhost:3434/gppd");
+        WebResource wr = c.resource("http://localhost:3434/gppdproc");
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/AllMethods\"></simpelWrapper>");
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/AllMethods\">foo</simpelWrapper>");
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
+        assertTrue(response.indexOf("GETPOSTfooPUTbar") > 0);
     }
 }

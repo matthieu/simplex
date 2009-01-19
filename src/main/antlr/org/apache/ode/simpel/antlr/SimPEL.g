@@ -9,7 +9,7 @@ tokens {
     ROOT; PROCESS; PICK; SEQUENCE; FLOW; IF; ELSEIF; ELSE; WHILE; UNTIL; FOREACH; FORALL; INVOKE;
     RECEIVE; REPLY; ASSIGN; THROW; WAIT; EXIT; TIMEOUT; TRY; CATCH; CATCH_ALL; SCOPE; EVENT;
     RESOURCE;
-    REQUEST; ONEVENT; ONALARM; ONRECEIVE; ONUPDATE; ONQUERY; COMPENSATION; COMPENSATE;
+    REQUEST; REQ_BASE; ONEVENT; ONALARM; ONRECEIVE; ONUPDATE; ONQUERY; COMPENSATION; COMPENSATE;
     CORRELATION; CORR_MAP; PARTNERLINK; VARIABLE; BLOCK_PARAM;
     SIGNAL; JOIN; WITH; MAP;
     EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
@@ -163,7 +163,7 @@ options {backtrack=true;}
         :	request_base SEMI -> ^(REQUEST request_base)
             | request_base param_block -> ^(REQUEST request_base) param_block;
 request_base
-        :	'request' '(' expr (',' meth=STRING (',' msg=ID)?)? ')' -> ^(expr $meth? $msg?);
+        :	'request' '(' expr (',' meth=STRING (',' msg=ID)?)? ')' -> ^(REQ_BASE expr $meth? $msg?);
 
 assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue
