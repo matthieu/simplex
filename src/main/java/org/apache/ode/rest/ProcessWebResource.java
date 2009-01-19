@@ -84,7 +84,7 @@ public class ProcessWebResource {
                         .entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
                                 .getFirstChildElement(mex.getResponse().getMessage()))))
                         .type("application/xml")
-                        .header("Location", _root+mex.getResource().getUrl())
+                        .header("Location", _root + mex.getResource().getUrl())
                         .build();
             }
         }

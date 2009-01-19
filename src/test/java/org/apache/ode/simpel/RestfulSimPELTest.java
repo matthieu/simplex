@@ -15,6 +15,20 @@ import java.util.regex.Matcher;
 
 public class RestfulSimPELTest extends TestCase {
 
+    EmbeddedServer server;
+
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        server = new EmbeddedServer();
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
+        server.stop();
+    }
+
     private static final String HELLO_WORLD =
             "process HelloWorld {\n" +
             "   receive(self) { |name|\n" +
@@ -24,7 +38,6 @@ public class RestfulSimPELTest extends TestCase {
             "}";
 
     public void testRestfulHelloWorld() throws Exception {
-        EmbeddedServer server = new EmbeddedServer();
         server.start();
         Descriptor desc = new Descriptor();
         desc.setAddress("/hello");
@@ -39,9 +52,8 @@ public class RestfulSimPELTest extends TestCase {
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
         assertTrue(response.indexOf("Hello foo") > 0);
-        assertTrue(resp.getMetadata().get("Location").get(0), resp.getMetadata().get("Location").get(0).matches("/hello/[0-9]*"));
+        assertTrue(resp.getMetadata().get("Location").get(0), resp.getMetadata().get("Location").get(0).matches(".*/hello/[0-9]*"));
         System.out.println("loc " + resp.getMetadata().get("Location"));
-        server.stop();
     }
 
     private static final String COUNTER =
@@ -73,7 +85,6 @@ public class RestfulSimPELTest extends TestCase {
             "}";
 
     public void testCounter() throws Exception {
-        EmbeddedServer server = new EmbeddedServer();
         server.start();
         Descriptor desc = new Descriptor();
         desc.setAddress("/counter");
@@ -138,8 +149,6 @@ public class RestfulSimPELTest extends TestCase {
         Thread.sleep(1500);
         queryResponse = instance.path("/").type("application/xml").get(ClientResponse.class);
         assertTrue(queryResponse.getStatus() == 410);
-
-        server.stop();
     }
     
     public static final String CALLING_GET =
@@ -153,7 +162,6 @@ public class RestfulSimPELTest extends TestCase {
             "}";
 
     public void testCallingGet() throws Exception {
-        EmbeddedServer server = new EmbeddedServer();
         server.start();
         Descriptor desc = new Descriptor();
         desc.setAddress("/feedget");
@@ -191,7 +199,6 @@ public class RestfulSimPELTest extends TestCase {
             "}";
 
     public void testAllMethods() throws Exception {
-        EmbeddedServer server = new EmbeddedServer();
         server.start();
         Descriptor desc = new Descriptor();
         desc.setAddress("/gppdproc");

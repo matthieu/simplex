@@ -28,16 +28,16 @@ import org.apache.ode.bpel.rtrep.v2.*;
     private ErrorListener el;
     
     public void setErrorListener(ErrorListener el) {
-    	this.el = el;
+    	  this.el = el;
     }
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-    	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+    	  el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
     }
     
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-	List stack = getRuleInvocationStack(e, this.getClass().getName());
-    	String msg = null;
-    	if ( e instanceof NoViableAltException ) {
+      	List stack = getRuleInvocationStack(e, this.getClass().getName());
+    	  String msg = null;
+    	  if ( e instanceof NoViableAltException ) {
        	    NoViableAltException nvae = (NoViableAltException)e;
        	    msg = " no viable alt; token="+e.token+" (decision="+nvae.decisionNumber+" state "+nvae.stateNumber+")"+
                   " decision=<<"+nvae.grammarDecisionDescription+">>";
@@ -59,12 +59,12 @@ import org.apache.ode.bpel.rtrep.v2.*;
 	    return builder;
     }
     public void setBuilder(OBuilder builder) {
-	    this.builder = builder;
+	      this.builder = builder;
     }
 
     private String text(org.antlr.runtime.tree.Tree t) {
-    	if (t == null) return null;
-    	else return t.getText();
+    	  if (t == null) return null;
+    	  else return t.getText();
     }
 
     private String deepText(org.antlr.runtime.tree.Tree t) {

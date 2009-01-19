@@ -143,20 +143,21 @@ with_map:       ID ':' path_expr -> ^(MAP ID path_expr);
 // Simple activities
 
 invoke
-options {backtrack=true;}
-        :	invoke_base param_block -> ^(INVOKE invoke_base) param_block;
+        :	invoke_base param_block -> ^(INVOKE invoke_base) param_block
+          | invoke_base SEMI -> ^(INVOKE invoke_base);
 invoke_base
         :	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^($p $o $in?);
 
 receive	
-options {backtrack=true;}
-        :	receive_base param_block -> ^(RECEIVE receive_base) param_block;
+        :	receive_base param_block -> ^(RECEIVE receive_base) param_block
+          | receive_base SEMI -> ^(RECEIVE receive_base);
 receive_base
 	      :	'receive' '(' p=ID (',' o=ID (',' correlation)? )? ')' -> ^($p $o? correlation?);
 
 request
 options {backtrack=true;}
-        :	request_base param_block -> ^(REQUEST request_base) param_block;
+        :	request_base param_block -> ^(REQUEST request_base) param_block
+          | request_base SEMI -> ^(REQUEST request_base);
 request_base
         :	'request' '(' expr (',' meth=STRING (',' msg=ID)?)? ')' -> ^(REQ_BASE expr $meth? $msg?);
 
