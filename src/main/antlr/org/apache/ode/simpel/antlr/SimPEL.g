@@ -235,7 +235,7 @@ request_base
 
 reply
 @init { paraphrases.push("in a reply"); }
-@after { paraphrases.pop(); }
+@after { paraphrases.pop(); } // todo allow expressions in replied element
         : 'reply' '(' ID (',' ID (',' ID)?)? ')' -> ^(REPLY ID (ID ID?)?);
 
 assign

@@ -53,7 +53,7 @@ public class RestfulSimPELTest extends TestCase {
         System.out.println("=> " + response);
         assertTrue(response.indexOf("Hello foo") > 0);
         assertTrue(resp.getMetadata().get("Location").get(0), resp.getMetadata().get("Location").get(0).matches(".*/hello/[0-9]*"));
-        System.out.println("loc " + resp.getMetadata().get("Location"));
+        assertTrue(resp.getStatus() == 201);
     }
 
     private static final String COUNTER =
@@ -99,7 +99,7 @@ public class RestfulSimPELTest extends TestCase {
                 .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/Counter\">3</simpelWrapper>");
         String response = createResponse.getEntity(String.class);
         String location = createResponse.getMetadata().get("Location").get(0);
-        // TODO status = 201
+        assertTrue(createResponse.getStatus() == 201);
         assertTrue(location.matches(".*/counter/[0-9]*$"));
         assertTrue(response.indexOf("3") > 0);
 
@@ -214,4 +214,38 @@ public class RestfulSimPELTest extends TestCase {
         System.out.println("=> " + response);
         assertTrue(response.indexOf("GETPOSTfooPUTbar") > 0);
     }
+
+    public static final String POST_WITH_201 =
+            "var testRoot = \"http://localhost:3434/post201\"; " +
+            "process PostRedirect {\n" +
+            "   receive(self) { |query|\n" +
+            "       postMsg = <foo>foo</foo>;\n" +
+            "       postRes = request(testRoot, \"post\", postMsg);\n" +
+            "       if(postRes.headers.Status == \"201\") { \n" +
+            "           msg = postRes.headers.Location;\n" +
+            "           reply(msg);\n" +
+            "       } else {\n" +
+            "           msg = <fail>fail</fail>;\n" +
+            "           reply(msg);\n" +
+            "       }\n" +
+            "   }\n" +
+            "}";
+
+    public void testPostWith201() throws Exception {
+        server.start();
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/post201proc");
+        server.deploy(POST_WITH_201, desc);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/post201proc");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/PostRedirect\">foo</simpelWrapper>");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("http://foo/bar") > 0);
+    }
+
 }

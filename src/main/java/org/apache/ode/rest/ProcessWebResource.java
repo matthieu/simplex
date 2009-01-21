@@ -80,11 +80,14 @@ public class ProcessWebResource {
             if (mex.getResponse() == null) {
                 return Response.status(204).build();
             } else {
-                return Response.status(200)
-                        .entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
+                Response.ResponseBuilder b;
+                if (mex.isInstantiatingResource())
+                    b = Response.status(201).header("Location", _root + mex.getResource().getUrl());
+                else
+                    b = Response.status(200);
+                return b.entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
                                 .getFirstChildElement(mex.getResponse().getMessage()))))
                         .type("application/xml")
-                        .header("Location", _root + mex.getResource().getUrl())
                         .build();
             }
         }

@@ -115,21 +115,24 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             return;
         }
 
-        // TODO check status
+        // TODO check more status
         String response = resp.getEntity(String.class);
-        Element responseXML;
-        try {
-            responseXML = DOMUtils.stringToDOM(response);
-        } catch (Exception e) {
-            Document doc = DOMUtils.newDocument();
-            Element failureElmt = doc.createElement("requestFailure");
-            failureElmt.setTextContent(response);
-            __log.debug("Request to " + res.getUrl() + " failed, response couldn't be parsed: " + response);
-            restOutMessageExchange.replyWithFailure(MessageExchange.FailureType.FORMAT_ERROR,
-                    "Can't parse the response to " + res.getUrl(), failureElmt);
-            return;
+        Element responseXML = null;
+        if (response != null && response.length() > 0) {
+            try {
+                responseXML = DOMUtils.stringToDOM(response);
+            } catch (Exception e) {
+                Document doc = DOMUtils.newDocument();
+                Element failureElmt = doc.createElement("requestFailure");
+                failureElmt.setTextContent(response);
+                __log.debug("Request to " + res.getUrl() + " failed, response couldn't be parsed: " + response);
+                restOutMessageExchange.replyWithFailure(MessageExchange.FailureType.FORMAT_ERROR,
+                        "Can't parse the response to " + res.getUrl(), failureElmt);
+                return;
+            }
         }
 
+        // Prepare the message
         Document odeMsg = DOMUtils.newDocument();
         Element odeMsgEl = odeMsg.createElementNS(null, "message");
         odeMsg.appendChild(odeMsgEl);
@@ -137,7 +140,18 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         odeMsgEl.appendChild(partElmt);
         Element methodElmt = odeMsg.createElement(res.getMethod() + "Response");
         partElmt.appendChild(methodElmt);
-        methodElmt.appendChild(odeMsg.adoptNode(responseXML));
+        if (responseXML != null)
+            methodElmt.appendChild(odeMsg.adoptNode(responseXML));
+
+        // Copy headers
+        if (resp.getStatus() == 201) {
+            Element loc = odeMsg.createElement("Location");
+            loc.setTextContent(resp.getMetadata().getFirst("Location"));
+            withHeaders(methodElmt).appendChild(loc);
+        }
+        Element status = odeMsg.createElement("Status");
+        status.setTextContent(""+resp.getStatus());
+        withHeaders(methodElmt).appendChild(status);
 
         Message responseMsg = restOutMessageExchange.createMessage(null);
         responseMsg.setMessage(odeMsgEl);
@@ -171,5 +185,15 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             payload = doc.createTextNode(DOMUtils.getTextContent(root));
         }
         return payload;
+    }
+
+    private Element withHeaders(Element element) {
+        Element res = DOMUtils.findChildByName(element, new QName(null, "headers"));
+        if (res == null) {
+            Element headers = element.getOwnerDocument().createElement("headers");
+            element.appendChild(headers);
+            res = headers;
+        }
+        return res;
     }
 }

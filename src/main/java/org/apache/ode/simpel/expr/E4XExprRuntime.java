@@ -186,6 +186,16 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                     else node = DOMUtils.getFirstChildElement((Element)node);
                 }
 
+                // When we're querying on headers, the sub-element is supposed to be right under the
+                // current. To avoid pollution of the main user variable we store it one level up so
+                // we're readjusting here.
+                if (_expr.getExpr().indexOf(".headers") > 0 && node.getParentNode() != null &&
+                        node.getParentNode().getNodeType() == Node.ELEMENT_NODE) {
+                    Element parent = (Element) node.getParentNode();
+                    Element headers = DOMUtils.findChildByName(parent, new QName(null, "headers"));
+                    node.appendChild(node.getOwnerDocument().importNode(headers, true));
+                }
+
                 // Have to remove the xml header otherwise it confuses Rhino
                 String[] xmlArr = DOMUtils.domToString(node).split("\n");
                 // Going back to the evaluation loop to get a Rhino XML object, their XML API just doesn't have any
