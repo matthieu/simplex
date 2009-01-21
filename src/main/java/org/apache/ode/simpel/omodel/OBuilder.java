@@ -72,19 +72,23 @@ public class OBuilder extends BaseCompiler {
             StructuredActivity result = (StructuredActivity) buildMethod.invoke(this, buildParams);
             if (result != null) parent.run((OActivity) result.getOActivity());
             return result;
-        } catch (BuilderException e) {
-            // Report an error and try to recover from it to get further down in the tree
-            errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1, e.getMessage(), e);
-            return new SimpleActivity<OEmpty>(new OEmpty(_oprocess, (OActivity) parent.getOActivity()));
         } catch (Exception e) {
-            // Unrecoverable error, trying to report as much as possible
-            errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1,
-                    "Unrecoverable error, couldn't build activity of type " + oclass +
-                            (t != null ? (" near " + t.getText()) : ""), e);
+            if (e.getCause() instanceof BuilderException) {
+                // Report an error and try to recover from it to get further down in the tree
+                errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1,
+                        e.getCause().getMessage(), (Exception) e.getCause());
+                return new SimpleActivity<OInvoke>(new OInvoke(_oprocess, (OActivity) parent.getOActivity()));
+            } else {
+                __log.debug(e);
+                // Unrecoverable error, trying to report as much as possible
+                errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1,
+                        "Unrecoverable error, couldn't build activity of type " + oclass +
+                                (t != null ? (" near " + t.getText()) : ""), e);
 
-            CompilationException ce = new CompilationException(e);
-            ce.errors = errors.getErrors();
-            throw ce;
+                CompilationException ce = new CompilationException(e);
+                ce.errors = errors.getErrors();
+                throw ce;
+            }
         }
     }
 

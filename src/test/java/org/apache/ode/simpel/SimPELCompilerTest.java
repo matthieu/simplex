@@ -4,10 +4,12 @@ import junit.framework.TestCase;
 import org.antlr.runtime.RecognitionException;
 import org.apache.ode.bpel.rtrep.v2.OProcess;
 import org.apache.ode.Descriptor;
+import org.apache.ode.simpel.util.DefaultErrorListener;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
@@ -22,23 +24,29 @@ public class SimPELCompilerTest extends TestCase {
         desc.setRestful(false);
     }
 
+    public void testAllOk() throws Exception {
+        compileAllInFile("compile-tests-ok.simpel", true);
+    }
+
+    public void testAllKo() throws Exception {
+        compileAllInFile("compile-tests-ko.simpel", false);
+    }
+
     /**
      * If this was Ruby, I'd just dynamically create methods for each tested process
      * and we'd have one clean method for each test case. But this is Java so there's
      * only one reported test for all the processes.
      * @throws Exception
      */
-    public void testAllOk() throws Exception {
+    private void compileAllInFile(String file, boolean forSuccess) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(
-                getClass().getClassLoader().getResource("compile-tests-ok.simpel").getFile()));
+                getClass().getClassLoader().getResource(file).getFile()));
 
         int testCount = 0;
         String line;
         StringBuffer processBody = new StringBuffer();
-        TestErrorListener l = new TestErrorListener();
         SimPELCompiler comp = new SimPELCompiler();
-        comp.setErrorListener(l);
-        StringBuffer allErrors = new StringBuffer();
+        boolean failed = false;
         String testCaseName = "";
 
         // Priming the pump
@@ -48,14 +56,15 @@ public class SimPELCompilerTest extends TestCase {
 
         while ((line = reader.readLine()) != null) {
             if (line.trim().startsWith("#=")) {
-                // Found next test case divider, process is complete so we can parse
-                OProcess oprocess = comp.compileProcess(processBody.toString(), desc);
-                if (l.messages.toString().length() > 0) {
-                    // Shit happened
-                    allErrors.append("Test case ").append(testCaseName).append(" failed!!\n");
-                    allErrors.append(l.messages.toString()).append("\n");
-                } else {
-                    System.out.println(oprocess);
+                // Found next test case divider, process is complete so we can compile
+                try {
+                    comp.compileProcess(processBody.toString(), desc);
+                    System.out.println("Test case " + testCaseName + " compiled properly.");
+                    if (!forSuccess) failed = true;
+                } catch (CompilationException e) {
+                    System.out.println("There were errors while compiling test case " + testCaseName);
+                    System.out.println(e);
+                    if (forSuccess) failed = true;
                 }
                 testCount++;
 
@@ -63,7 +72,7 @@ public class SimPELCompilerTest extends TestCase {
                 testCaseName = reader.readLine().trim().substring(2);
                 reader.readLine();reader.readLine();
                 processBody = new StringBuffer();
-                l.messages = new StringBuffer();
+                comp.setErrorListener(new DefaultErrorListener());
             } else {
                 processBody.append(line).append("\n");
             }
@@ -72,23 +81,17 @@ public class SimPELCompilerTest extends TestCase {
         // And the last one
         try {
             comp.compileProcess(processBody.toString(), desc);
-        } catch (Exception e) {
-            System.out.println("Error compiling " + testCaseName);
-            e.printStackTrace();
+        } catch (CompilationException e) {
+            System.err.println("There were errors while compiling test case " + testCaseName);
+            System.err.println(e);
+            if (forSuccess) failed = true;
         }
         testCount++;
-        if (l.messages.toString().length() > 0) {
-            // Shit happened
-            allErrors.append("Test case ").append(testCaseName).append(" failed!!");
-            allErrors.append(l.messages.toString()).append("\n");
-        }
 
-        if (allErrors.toString().length() > 0) {
-            System.out.println("Some test processes failed to compile:\n");
-            System.out.println(allErrors.toString());
+        if (failed) {
             fail("There were failures.");
         } else {
-            System.out.println("\nCompiled " + testCount + " processes successfully.");
+            System.out.println("\nTested " + testCount + " processes successfully.");
         }
     }
 

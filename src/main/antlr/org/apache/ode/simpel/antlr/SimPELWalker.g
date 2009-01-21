@@ -20,18 +20,16 @@ import org.apache.ode.simpel.ErrorListener;
 import org.apache.ode.simpel.omodel.OBuilder;
 import org.apache.ode.simpel.omodel.SimPELExpr;
 import org.apache.ode.bpel.rtrep.v2.*;
+import org.apache.log4j.Logger;
 }
 
 @members {
     // Grammar level members
-    
-    private ErrorListener el;
-    
-    public void setErrorListener(ErrorListener el) {
-    	  this.el = el;
-    }
+
+    private static final Logger __log = Logger.getLogger(SimPELWalker.class);
+
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-    	  el.reportRecognitionError(e.line, e.charPositionInLine, getErrorMessage(e, tokenNames), e);
+    	  __log.debug("Tree grammar error " + e.line + ":" + e.charPositionInLine + " " + getErrorMessage(e, tokenNames));
     }
     
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {

@@ -1,16 +1,15 @@
 package org.apache.ode.simpel.util;
 
-import org.antlr.runtime.RecognitionException;
 import org.apache.ode.simpel.ErrorListener;
 import org.apache.ode.simpel.CompilationException;
+import org.apache.log4j.Logger;
 
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * @author Matthieu Riou <mriou@apache.org>
- */
 public class DefaultErrorListener implements ErrorListener {
+
+    private static final Logger __log = Logger.getLogger(DefaultErrorListener.class);
 
     private LinkedList<CompilationException.Error> _errors = new LinkedList<CompilationException.Error>();
 
@@ -20,7 +19,7 @@ public class DefaultErrorListener implements ErrorListener {
 
     public void reportRecognitionError(int line, int column, String message, Exception e) {
         _errors.add(new CompilationException.Error(line, column, message, e));
-        System.err.println(line + ":" + column + " " +  message);
+        __log.debug(line + ":" + column + " " +  message);
     }
 
 }

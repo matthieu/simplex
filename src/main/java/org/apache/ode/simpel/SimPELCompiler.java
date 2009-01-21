@@ -116,7 +116,6 @@ public class SimPELCompiler {
             SimPELWalker walker = new SimPELWalker(nodes);
             OBuilder obuilder = new OBuilder(desc, errListener);
             walker.setBuilder(obuilder);
-            walker.setErrorListener(errListener);
             HashMap<Integer, Integer> tokenMapping = buildTokenMap(E4XParser.tokenNames, E4XLexer.class, SimPELWalker.class);
             rewriteTokens(tokenMapping, E4XParser.tokenNames, t, walker, false);
 

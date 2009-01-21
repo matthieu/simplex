@@ -14,7 +14,8 @@ public class ErrorMessageBuilder {
     public static String msg(RecognitionException e, String[] tokenNames, String paraphrase) {
         String msg = null;
         if (e instanceof NoViableAltException) {
-            msg = "Syntax error, unexpected token " + tokenNames[e.token.getType()];
+            if (tokenNames == null) msg = "Invalid character";
+            else msg = "Syntax error, unexpected token " + tokenNames[e.token.getType()];
         } else if (e instanceof MismatchedTokenException) {
             MismatchedTokenException mte = (MismatchedTokenException) e;
             msg = "Syntax error, unexpected token " + tokenNames[e.token.getType()] + ", expecting " + tokenNames[mte.expecting];
