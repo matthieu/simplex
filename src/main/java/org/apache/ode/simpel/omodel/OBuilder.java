@@ -11,8 +11,11 @@ import org.apache.ode.simpel.wsdl.SimPELInput;
 import org.apache.ode.simpel.wsdl.SimPELOperation;
 import org.apache.ode.simpel.wsdl.SimPELOutput;
 import org.apache.ode.simpel.wsdl.SimPELPortType;
+import org.apache.ode.simpel.CompilationException;
+import org.apache.ode.simpel.ErrorListener;
 import org.apache.ode.utils.GUID;
 import org.apache.ode.Descriptor;
+import org.antlr.runtime.tree.Tree;
 
 import javax.wsdl.PortType;
 import javax.xml.namespace.QName;
@@ -28,6 +31,8 @@ public class OBuilder extends BaseCompiler {
     private static final String SIMPEL_NS = "http://ode.apache.org/simpel/1.0/definition";
 
     private Descriptor _desc;
+    private ErrorListener errors;
+
     private OExpressionLanguage _exprLang;
     private OExpressionLanguage _konstExprLang;
     private String _processNS;
@@ -37,15 +42,20 @@ public class OBuilder extends BaseCompiler {
     private HashMap<String,ResourceDesc> webResources = new HashMap<String,ResourceDesc>();
     private HashSet<String> typedVariables = new HashSet<String>();
 
-    public OBuilder(Descriptor desc) {
+    public OBuilder(Descriptor desc, ErrorListener errors) {
         HashMap<String, String> exprRuntime = new HashMap<String, String>();
         exprRuntime.put("runtime-class", "org.apache.ode.simpel.expr.E4XExprRuntime");
         _exprLang = new OExpressionLanguage(_oprocess, exprRuntime);
         _exprLang.expressionLanguageUri = SIMPEL_NS + "/exprLang";
         _desc = desc;
+        this.errors = errors;
     }
 
     public StructuredActivity build(Class oclass, OScope oscope, StructuredActivity parent, Object... params) {
+        return build(null, oclass, oscope, parent, params);
+    }
+
+    public StructuredActivity build(Tree t, Class oclass, OScope oscope, StructuredActivity parent, Object... params) {
         try {
             OActivity oactivity = (OActivity) oclass
                     .getConstructor(OProcess.class, OActivity.class).newInstance(_oprocess, parent.getOActivity());
@@ -62,8 +72,19 @@ public class OBuilder extends BaseCompiler {
             StructuredActivity result = (StructuredActivity) buildMethod.invoke(this, buildParams);
             if (result != null) parent.run((OActivity) result.getOActivity());
             return result;
+        } catch (BuilderException e) {
+            // Report an error and try to recover from it to get further down in the tree
+            errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1, e.getMessage(), e);
+            return new SimpleActivity<OEmpty>(new OEmpty(_oprocess, (OActivity) parent.getOActivity()));
         } catch (Exception e) {
-            throw new RuntimeException("Couldn't build activity of type " + oclass, e);
+            // Unrecoverable error, trying to report as much as possible
+            errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1,
+                    "Unrecoverable error, couldn't build activity of type " + oclass +
+                            (t != null ? (" near " + t.getText()) : ""), e);
+
+            CompilationException ce = new CompilationException(e);
+            ce.errors = errors.getErrors();
+            throw ce;
         }
     }
 
@@ -77,6 +98,7 @@ public class OBuilder extends BaseCompiler {
         }
         public abstract void run(OActivity child);
     }
+    
     public static class SimpleActivity<T> extends StructuredActivity<T> {
         public SimpleActivity(T oact) {
             super(oact);
@@ -111,7 +133,7 @@ public class OBuilder extends BaseCompiler {
         if (_desc.isRestful()) {
             SimPELExpr expr = new SimPELExpr(_oprocess);
             expr.setExpr(_desc.getAddress() != null ? ("\""+_desc.getAddress()+"\"") : "\"/\"");
-            addResourceDecl(processScope, "self", expr, null);
+            addResourceDecl(null, processScope, "self", expr, null);
         }
 
         return buildScope(processScope, null);
@@ -166,8 +188,9 @@ public class OBuilder extends BaseCompiler {
         if (operation == null) {
             onMessage.resource = copyResource(webResources.get(partnerLinkOrResource), "POST");
             onMessage.resource.setInbound(true);
-            if (onMessage.resource == null)
-                throw new RuntimeException("Unknown resource declared in receive: " + partnerLinkOrResource);
+            if (onMessage.resource == null) {
+                throw new BuilderException("Unknown resource declared in receive: " + partnerLinkOrResource);
+            }
             _oprocess.providedResources.add(onMessage.resource);
         } else {
             onMessage.partnerLink = buildPartnerLink(oscope, partnerLinkOrResource, operation, true, true);
@@ -197,6 +220,8 @@ public class OBuilder extends BaseCompiler {
     }
 
     public StructuredActivity buildEvent(final OEventHandler.OEvent oevent, OScope oscope, String resource, String method) {
+        if (webResources.get(resource) == null) throw new BuilderException("Unknown resource in event: " + resource);
+        
         oevent.resource = copyResource(webResources.get(resource), method);
         _oprocess.providedResources.add(oevent.resource);
         OScope eventScope = new OScope(_oprocess, oevent);
@@ -217,7 +242,7 @@ public class OBuilder extends BaseCompiler {
     public SimpleActivity buildRequest(OInvoke invoke, OScope oscope, SimPELExpr expr, String method, String outgoingMsg, SimPELExpr responseMsg) {
         if (method != null && (!method.equalsIgnoreCase("\"get\"") && !method.equalsIgnoreCase("\"put\"")
                  && !method.equalsIgnoreCase("\"post\"") && !method.equalsIgnoreCase("\"delete\"")))
-            throw new RuntimeException("Invalid HTTP method: " + method);
+            throw new BuilderException("Invalid HTTP method in request declaration: " + method);
 
         expr.setExpr(expr.getExpr());
         expr.expressionLanguage = _exprLang;
@@ -284,7 +309,7 @@ public class OBuilder extends BaseCompiler {
                                      String var, String plinkOrRes, String operation) {
         oreply.variable = resolveVariable(oscope, var, operation, false);
         if (plinkOrRes == null) {
-            if (ocomm == null) throw new RuntimeException("No parent receive but reply with var " + var +
+            if (ocomm == null) throw new BuilderException("No parent receive but reply with var " + var +
                     " has no plinkOrRes/operation or resource information.");
             if (ocomm.isRestful()) {
                 oreply.resource = ocomm.getResource();
@@ -296,7 +321,7 @@ public class OBuilder extends BaseCompiler {
         } else {
             if (operation == null) {
                 ResourceDesc res = webResources.get(plinkOrRes);
-                if (res == null) throw new RuntimeException("Couldn't resolve the reply using partner link " +
+                if (res == null) throw new BuilderException("Couldn't resolve the reply using partner link " +
                         "or resource " + plinkOrRes +". Either an operation is missing or the resource isn't recognized.");
                 oreply.resource = res.latest;
             } else {
@@ -347,9 +372,13 @@ public class OBuilder extends BaseCompiler {
         expr.addVariable(resolveVariable(oscope, varName));
     }
 
-    public void addVariableDecl(String varName, String modifiers) {
-        if (variables.get(varName) != null)
-            throw new RuntimeException("Duplicate definition of variable " + varName);
+    public void addVariableDecl(Tree t, String varName, String modifiers) {
+        if (variables.get(varName) != null) {
+            errors.reportRecognitionError(t.getLine(), t.getCharPositionInLine(), "Variable " +
+                    varName + " has already been declared.", null);
+            return;
+        }
+
         if (modifiers == null) return;
 
         if (modifiers.indexOf("unique") >= 0) {
@@ -373,7 +402,7 @@ public class OBuilder extends BaseCompiler {
         }
     }
 
-    public void addResourceDecl(OScope scope, String resourceName, SimPELExpr pathExpr, String resourceRef) {
+    public void addResourceDecl(Tree t, OScope scope, String resourceName, SimPELExpr pathExpr, String resourceRef) {
         ResourceDesc res = new ResourceDesc();
         res.name = resourceName;
         res.declaringScope = scope;
@@ -385,8 +414,11 @@ public class OBuilder extends BaseCompiler {
 
         if (resourceRef != null) {
             ResourceDesc reference = webResources.get(resourceRef);
-            if (reference == null) throw new RuntimeException("Unknown resource reference " + resourceRef +
-                    " in the definition of resource " + resourceName);
+            if (reference == null) {
+                errors.reportRecognitionError(t != null ? t.getLine() : -1, t != null ? t.getCharPositionInLine() : -1,
+                        "Unknown resource reference " + resourceRef + " in the definition of resource " + resourceName, null);
+                return;
+            }
             res.reference = reference;
         }
 
@@ -547,6 +579,12 @@ public class OBuilder extends BaseCompiler {
             for (OResource resource : methods.values()) {
                 resource.setInstantiateResource(i);
             }
+        }
+    }
+
+    private static class BuilderException extends RuntimeException {
+        private BuilderException(String message) {
+            super(message);
         }
     }
 }

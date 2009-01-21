@@ -18,7 +18,7 @@ public class DefaultErrorListener implements ErrorListener {
         return _errors;
     }
 
-    public void reportRecognitionError(int line, int column, String message, RecognitionException e) {
+    public void reportRecognitionError(int line, int column, String message, Exception e) {
         _errors.add(new CompilationException.Error(line, column, message, e));
         System.err.println(line + ":" + column + " " +  message);
     }

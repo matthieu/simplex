@@ -110,7 +110,7 @@ scope Parent;
 param_block
 scope Parent;
 	:	^(SEQUENCE ID+
-		{ OBuilder.StructuredActivity seq = builder.build(OSequence.class, $BPELScope::oscope, $Parent[-1]::activity); 
+		{ OBuilder.StructuredActivity seq = builder.build($ID, OSequence.class, $BPELScope::oscope, $Parent[-1]::activity);
 		  $Parent::activity = seq;
 		  builder.setBlockParam($BPELScope::oscope, (OSequence)seq.getOActivity(), $ID.text); 
 		}
@@ -136,7 +136,8 @@ scope ExprContext Parent;
     }
     e=(expr) {
         $ExprContext::expr.setExpr(deepText($e));
-        OBuilder.StructuredActivity<OSwitch> oswitch = builder.build(OSwitch.class, $BPELScope::oscope, $Parent[-1]::activity, $ExprContext::expr);
+        OBuilder.StructuredActivity<OSwitch> oswitch = builder.build($e, OSwitch.class,
+            $BPELScope::oscope, $Parent[-1]::activity, $ExprContext::expr);
         $Parent::activity = oswitch;
     } b1=(body)
     (^(ELSE b2=(body)))?);
@@ -148,7 +149,8 @@ scope ExprContext Parent;
     }
     e=(expr) {
         $ExprContext::expr.setExpr(deepText($e));
-        OBuilder.StructuredActivity<OWhile> owhile = builder.build(OWhile.class, $BPELScope::oscope, $Parent[-1]::activity, $ExprContext::expr);
+        OBuilder.StructuredActivity<OWhile> owhile = builder.build($e, OWhile.class,
+            $BPELScope::oscope, $Parent[-1]::activity, $ExprContext::expr);
         $Parent::activity = owhile;
     }
     body);
@@ -187,8 +189,8 @@ onalarm	:	^(ONALARM expr body);
 onquery
 scope ReceiveBlock Parent;
     :	^(ONQUERY ID {
-            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
-                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "GET");
+            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder.build($ID, OEventHandler.OEvent.class,
+                $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "GET");
             $ReceiveBlock::activity = (OComm) on.getOActivity();
             $Parent::activity = on;
         }
@@ -196,8 +198,8 @@ scope ReceiveBlock Parent;
 onrec
 scope ReceiveBlock Parent;
     :	^(ONRECEIVE ID {
-            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
-                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "POST");
+            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder.build($ID, OEventHandler.OEvent.class,
+                $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "POST");
             $ReceiveBlock::activity = (OComm) on.getOActivity();
             $Parent::activity = on;
         }
@@ -205,8 +207,8 @@ scope ReceiveBlock Parent;
 onupd
 scope ReceiveBlock Parent;
     :	^(ONUPDATE ID {
-            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder
-                .build(OEventHandler.OEvent.class, $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "PUT");
+            OBuilder.StructuredActivity<OEventHandler.OEvent> on = builder.build($ID, OEventHandler.OEvent.class,
+                $BPELScope::oscope, $Parent[-1]::activity, deepText($ID), "PUT");
             $ReceiveBlock::activity = (OComm) on.getOActivity();
             $Parent::activity = on;
         }
@@ -227,7 +229,7 @@ with_map:       ^(MAP ID path_expr);
 invoke
 scope ReceiveBlock;
     :	^(INVOKE ^(p=ID o=ID in=ID?)) {
-            OBuilder.StructuredActivity<OInvoke> inv = builder.build(OInvoke.class, $BPELScope::oscope,
+            OBuilder.StructuredActivity<OInvoke> inv = builder.build($p, OInvoke.class, $BPELScope::oscope,
                 $Parent::activity, text($p), text($o), text($in), null);
             $ReceiveBlock::activity = inv.getOActivity();
         }
@@ -236,10 +238,10 @@ scope ReceiveBlock;
 reply	
   :	^(REPLY msg=ID (pl=ID (op=ID)?)?) {
       if (ReceiveBlock_stack.size() > 0)
-        builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
+        builder.build($msg, OReply.class, $BPELScope::oscope, $Parent::activity,
 			      $ReceiveBlock::activity, text($msg), text($pl), text($op));
       else
-        builder.build(OReply.class, $BPELScope::oscope, $Parent::activity,
+        builder.build($msg, OReply.class, $BPELScope::oscope, $Parent::activity,
 			      null, text($msg), text($pl), text($op));
     };
 receive	
@@ -248,10 +250,10 @@ scope ReceiveBlock;
 	        // The receive input is the lvalue of the assignment expression in which this receive is enclosed (if it is)
 	        OBuilder.StructuredActivity<OPickReceive> rec;
 	        if (ExprContext_stack.size() > 0)
-                rec = builder.build(OPickReceive.class, $BPELScope::oscope,
+                rec = builder.build($p, OPickReceive.class, $BPELScope::oscope,
                     $Parent::activity, text($p), text($o), $ExprContext::expr);
             else
-                rec = builder.build(OPickReceive.class, $BPELScope::oscope,
+                rec = builder.build($p, OPickReceive.class, $BPELScope::oscope,
                     $Parent::activity, text($p), text($o), null);
 
 		    $ReceiveBlock::activity = rec.getOActivity().onMessages.get(0);
@@ -270,10 +272,10 @@ scope ReceiveBlock ExprContext;
 	        // The request output is the lvalue of the assignment expression in which this request is enclosed (if it is)
 	        OBuilder.StructuredActivity<OInvoke> inv;
 	        if (ExprContext_stack.size() > 1)
-                inv = builder.build(OInvoke.class, $BPELScope::oscope,
+                inv = builder.build($e, OInvoke.class, $BPELScope::oscope,
                     $Parent::activity, $ExprContext::expr, text($meth), text($msg), $ExprContext[-1]::expr);
             else
-                inv = builder.build(OInvoke.class, $BPELScope::oscope,
+                inv = builder.build($e, OInvoke.class, $BPELScope::oscope,
                     $Parent::activity, $ExprContext::expr, text($meth), text($msg), null);
 
             $ReceiveBlock::activity = inv.getOActivity();
@@ -292,7 +294,7 @@ scope ExprContext;
         $ExprContext::expr.setExpr(deepText($rv));
         if (!"RESOURCE".equals($rv.getText()) && !"RECEIVE".equals($rv.getText()) && !"REQUEST".equals($rv.getText())) {
 		    OBuilder.StructuredActivity<OAssign> assign =
-                builder.build(OAssign.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
+                builder.build($rv, OAssign.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
             // The long, winding road of abstraction
             $ExprContext::expr = (SimPELExpr) ((OAssign.Expression)((OAssign.Copy)assign.
                 getOActivity().operations.get(0)).from).expression;
@@ -310,13 +312,13 @@ scope ExprContext;
         e=(expr)) {
             $ExprContext::expr.setExpr(deepText($e));
 		    OBuilder.StructuredActivity<OWait> wait =
-                builder.build(OWait.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
+                builder.build($e, OWait.class, $BPELScope::oscope, $Parent::activity, $ExprContext::expr);
         };
 
 exit	:	EXIT;
 
 // Other
-variable:	^(VARIABLE ID VAR_MODS*) { builder.addVariableDecl(text($ID), text($VAR_MODS)); };
+variable:	^(VARIABLE ID VAR_MODS*) { builder.addVariableDecl($ID, text($ID), text($VAR_MODS)); };
 
 resource
 scope ExprContext;
@@ -326,7 +328,7 @@ scope ExprContext;
     e=(expr)? ID?) {
         $ExprContext::expr.setExpr(deepText($e));
         // The resource name is the lvalue of the assignment expression in which this resource def is enclosed
-        builder.addResourceDecl($BPELScope::oscope, $ExprContext[-1]::expr.getLValue(), $ExprContext::expr, text($ID)); 
+        builder.addResourceDecl($e, $BPELScope::oscope, $ExprContext[-1]::expr.getLValue(), $ExprContext::expr, text($ID));
     };
 
 partner_link

@@ -142,7 +142,7 @@ public class SimPELCompilerTest extends TestCase {
             return null;
         }
 
-        public void reportRecognitionError(int line, int column, String message, RecognitionException e) {
+        public void reportRecognitionError(int line, int column, String message, Exception e) {
             messages.append(" - line ").append(line).append(": ").append(message).append("\n");
         }
     }
