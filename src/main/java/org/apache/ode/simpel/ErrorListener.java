@@ -7,5 +7,5 @@ import org.antlr.runtime.RecognitionException;
  */
 public interface ErrorListener {
 
-    public void reportRecognitionError(String[] tokens, int line, String message, RecognitionException e);
+    public void reportRecognitionError(int line, int column, String message, RecognitionException e);
 }

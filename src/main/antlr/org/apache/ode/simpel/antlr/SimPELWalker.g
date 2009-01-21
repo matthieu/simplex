@@ -31,7 +31,7 @@ import org.apache.ode.bpel.rtrep.v2.*;
     	  this.el = el;
     }
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-    	  el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+    	  el.reportRecognitionError(e.line, e.charPositionInLine, getErrorMessage(e, tokenNames), e);
     }
     
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {

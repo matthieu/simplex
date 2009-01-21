@@ -14,6 +14,13 @@ tokens {
     SIGNAL; JOIN; WITH; MAP;
     EXPR; EXT_EXPR; XML_LITERAL; CALL; NAMESPACE; NS; PATH;
 }
+
+@lexer::header {
+package org.apache.ode.simpel.antlr;
+import org.apache.ode.simpel.ErrorListener;
+import org.apache.ode.simpel.util.ErrorMessageBuilder;
+}
+
 @parser::header {
 package org.apache.ode.simpel.antlr;
 
@@ -21,11 +28,8 @@ import uk.co.badgersinfoil.e4x.antlr.LinkedListTokenStream;
 import uk.co.badgersinfoil.e4x.antlr.LinkedListTree;
 import uk.co.badgersinfoil.e4x.E4XHelper;
 import org.apache.ode.simpel.ErrorListener;
+import org.apache.ode.simpel.util.ErrorMessageBuilder;
 import org.apache.ode.simpel.util.JSHelper;
-}
-@lexer::header {
-package org.apache.ode.simpel.antlr;
-import org.apache.ode.simpel.ErrorListener;
 }
 
 @lexer::members {
@@ -35,7 +39,12 @@ import org.apache.ode.simpel.ErrorListener;
     	this.el = el;
     }
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-    	el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+    	el.reportRecognitionError(e.line, e.charPositionInLine, getErrorMessage(e, tokenNames), e);
+    }
+    public String getErrorMessage(RecognitionException e, String[] tokenNames) {
+        String msg = ErrorMessageBuilder.msg(e, tokenNames, null);
+        if (msg == null) msg = super.getErrorMessage(e, tokenNames);
+        return msg;
     }
 }
 
@@ -45,6 +54,7 @@ import org.apache.ode.simpel.ErrorListener;
     private SimPELLexer lexer;
     private CharStream cs;
     private ErrorListener el;
+    private Stack paraphrases = new Stack();
     
     public void setInput(SimPELLexer lexer, CharStream cs) {
         this.lexer = lexer;
@@ -64,20 +74,14 @@ import org.apache.ode.simpel.ErrorListener;
     }
     
     public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-    	  el.reportRecognitionError(tokenNames, e.line, getErrorMessage(e, tokenNames), e);
+        el.reportRecognitionError(e.line, e.charPositionInLine, getErrorMessage(e, tokenNames), e);
     }
     
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-	      List stack = getRuleInvocationStack(e, this.getClass().getName());
-    	  String msg = null;
-    	  if ( e instanceof NoViableAltException ) {
-       	    NoViableAltException nvae = (NoViableAltException)e;
-       	    msg = " no viable alt; token="+e.token+" (decision="+nvae.decisionNumber+" state "+nvae.stateNumber+")"+
-                  " decision=<<"+nvae.grammarDecisionDescription+">>";
-        } else {
-            msg = super.getErrorMessage(e, tokenNames);
-        }
-        return stack+" "+msg;
+//    	  List stack = getRuleInvocationStack(e, this.getClass().getName());
+        String msg = ErrorMessageBuilder.msg(e, tokenNames, (String) paraphrases.peek());
+        if (msg == null) msg = super.getErrorMessage(e, tokenNames);
+        return msg;
     }
     
     public String getTokenErrorDisplay(Token t) {
@@ -95,102 +99,193 @@ declaration
 process	:	'process' ns_id body -> ^(PROCESS ns_id body);
 
 proc_stmt
+@init { paraphrases.push("in a process"); }
+@after { paraphrases.pop(); }
 	:	pick | flow | if_ex | while_ex | until_ex | foreach | forall | try_ex | scope_ex | with_ex
 		| receive | request | invoke | ((reply | assign | throw_ex | wait_ex | exit | signal | join
 		| variables | partner_link) SEMI!);
 
-block	:	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
+block
+@init { paraphrases.push("in a block of statements"); }
+@after { paraphrases.pop(); }
+        :	'{' proc_stmt+ '}' -> ^(SEQUENCE proc_stmt+);
+
 param_block
+@init { paraphrases.push("in a parameterized block of statements"); }
+@after { paraphrases.pop(); }
 	:	'{' ('|' in+=ID (',' in+=ID)* '|')? proc_stmt+ '}' -> ^(SEQUENCE $in* proc_stmt+);
+
 body	:	block | proc_stmt;
 
 // Structured activities
-pick	:	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
-timeout	:	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block); 
+pick
+@init { paraphrases.push("in a pick"); }
+@after { paraphrases.pop(); }
+        :	'pick' '{' receive* timeout* '}' -> ^(PICK receive* timeout*);
 
-flow	:	'parallel' b+=body ('and' b+=body)* -> ^(FLOW $b*);
+timeout
+@init { paraphrases.push("in a timeout"); }
+@after { paraphrases.pop(); }
+        :	'timeout' '(' expr ')' block -> ^(TIMEOUT expr block);
+
+flow
+@init { paraphrases.push("in a flow"); }
+@after { paraphrases.pop(); }
+        :	'parallel' b+=body ('and' b+=body)* -> ^(FLOW $b*);
 signal	:	'signal' '('ID (',' expr)? ')' -> ^(SIGNAL ID expr?);
 join	:	'join' '(' k+=ID (',' k+=ID)* (',' expr)? ')' -> ^(JOIN $k+ expr?);
 
-if_ex	:	'if' '(' expr ')' ifb=body ('else' eb=body)? -> ^(IF expr $ifb (^(ELSE $eb))?);
+if_ex
+@init { paraphrases.push("in a if expression"); }
+@after { paraphrases.pop(); }
+        :	'if' '(' expr ')' ifb=body ('else' eb=body)? -> ^(IF expr $ifb (^(ELSE $eb))?);
 
-while_ex:	'while' '(' expr ')' body -> ^(WHILE expr body);
+while_ex
+@init { paraphrases.push("in a while"); }
+@after { paraphrases.pop(); }
+        :	'while' '(' expr ')' body -> ^(WHILE expr body);
 
-until_ex:	'do' body 'until' '(' expr ')' -> ^(UNTIL expr body);
+until_ex
+@init { paraphrases.push("in an until"); }
+@after { paraphrases.pop(); }
+        :	'do' body 'until' '(' expr ')' -> ^(UNTIL expr body);
 
-foreach	:	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' body -> ^(FOREACH ID $init $cond assign body);
-forall	:	'forall' '(' ID '=' from=expr 'to' to=expr ')' body -> ^(FORALL ID $from $to body);
+foreach
+@init { paraphrases.push("in a foreach loop"); }
+@after { paraphrases.pop(); }
+        :	'for' '(' ID '=' init=expr ';' cond=expr ';' assign ')' body -> ^(FOREACH ID $init $cond assign body);
+forall
+@init { paraphrases.push("in a forall loop"); }
+@after { paraphrases.pop(); }
+        :	'forall' '(' ID '=' from=expr 'to' to=expr ')' body -> ^(FORALL ID $from $to body);
 
-try_ex	:	'try' body catch_ex* -> ^(TRY body catch_ex*);		
-catch_ex:	'catch' '(' ns_id ')' param_block -> ^(CATCH ns_id param_block);
+try_ex
+@init { paraphrases.push("in a try block"); }
+@after { paraphrases.pop(); }
+        :	'try' body catch_ex* -> ^(TRY body catch_ex*);
+catch_ex
+@init { paraphrases.push("in a catch block"); }
+@after { paraphrases.pop(); }
+        :	'catch' '(' ns_id ')' param_block -> ^(CATCH ns_id param_block);
 
-scope_ex:	'scope' ('(' ID ')')? body scope_stmt* -> ^(SCOPE ID? body scope_stmt*);
+scope_ex
+@init { paraphrases.push("in a scope declaration"); }
+@after { paraphrases.pop(); }
+        :	'scope' ('(' ID ')')? body scope_stmt* -> ^(SCOPE ID? body scope_stmt*);
 scope_stmt
-	:	onevent | onalarm | compensation | onquery | onrec | onupd;
+    	:	onevent | onalarm | compensation | onquery | onrec | onupd;
 
-onevent	:	'onEvent' '(' p=ID ',' o=ID ')' param_block -> ^(ONEVENT $p $o param_block);
-onalarm	:	'onAlarm' '(' expr ')' body -> ^(ONALARM expr body);
-onquery	:	'onQuery' '(' r=ID ')' body -> ^(ONQUERY $r body);
-onrec	:	'onReceive' '(' r=ID ')' body -> ^(ONRECEIVE $r body);
-onupd	:	'onUpdate' '(' r=ID ')' body -> ^(ONUPDATE $r body);
+onevent
+@init { paraphrases.push("in an onEvent"); }
+@after { paraphrases.pop(); }
+        :	'onEvent' '(' p=ID ',' o=ID ')' param_block -> ^(ONEVENT $p $o param_block);
+onalarm
+@init { paraphrases.push("in an onAlarm"); }
+@after { paraphrases.pop(); }
+        :	'onAlarm' '(' expr ')' body -> ^(ONALARM expr body);
+onquery
+@init { paraphrases.push("in an onQuery"); }
+@after { paraphrases.pop(); }
+        :	'onQuery' '(' r=ID ')' body -> ^(ONQUERY $r body);
+onrec
+@init { paraphrases.push("in an onReceive"); }
+@after { paraphrases.pop(); }
+        :	'onReceive' '(' r=ID ')' body -> ^(ONRECEIVE $r body);
+onupd
+@init { paraphrases.push("in an onUpdate"); }
+@after { paraphrases.pop(); }
+        :	'onUpdate' '(' r=ID ')' body -> ^(ONUPDATE $r body);
+
 compensation
+@init { paraphrases.push("in an compensation"); }
+@after { paraphrases.pop(); }
 	:	'compensation' body -> ^(COMPENSATION body);
 
-with_ex :
-                'with' '(' wm+=with_map (',' wm+=with_map)* ')' body -> ^(WITH $wm+ body);
+with_ex
+@init { paraphrases.push("in a with expression"); }
+@after { paraphrases.pop(); }
+        : 'with' '(' wm+=with_map (',' wm+=with_map)* ')' body -> ^(WITH $wm+ body);
 with_map:       ID ':' path_expr -> ^(MAP ID path_expr);
 
 // Simple activities
 
-invoke
-        :	invoke_base param_block -> ^(INVOKE invoke_base) param_block
+invoke : invoke_base param_block -> ^(INVOKE invoke_base) param_block
           | invoke_base SEMI -> ^(INVOKE invoke_base);
 invoke_base
+@init { paraphrases.push("in an invoke"); }
+@after { paraphrases.pop(); }
         :	'invoke' '(' p=ID ',' o=ID (',' in=ID)? ')' -> ^($p $o $in?);
 
-receive	
-        :	receive_base param_block -> ^(RECEIVE receive_base) param_block
+receive	: receive_base param_block -> ^(RECEIVE receive_base) param_block
           | receive_base SEMI -> ^(RECEIVE receive_base);
 receive_base
-	      :	'receive' '(' p=ID (',' o=ID (',' correlation)? )? ')' -> ^($p $o? correlation?);
+@init { paraphrases.push("in a receive"); }
+@after { paraphrases.pop(); }
+        : 'receive' '(' p=ID (',' o=ID (',' correlation)? )? ')' -> ^($p $o? correlation?);
 
 request
 options {backtrack=true;}
         :	request_base param_block -> ^(REQUEST request_base) param_block
           | request_base SEMI -> ^(REQUEST request_base);
+
 request_base
+@init { paraphrases.push("in a request"); }
+@after { paraphrases.pop(); }
         :	'request' '(' expr (',' meth=STRING (',' msg=ID)?)? ')' -> ^(REQ_BASE expr $meth? $msg?);
 
-reply	  :	'reply' '(' ID (',' ID (',' ID)?)? ')' -> ^(REPLY ID (ID ID?)?);
+reply
+@init { paraphrases.push("in a reply"); }
+@after { paraphrases.pop(); }
+        : 'reply' '(' ID (',' ID (',' ID)?)? ')' -> ^(REPLY ID (ID ID?)?);
 
-assign	:	path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
+assign
+@init { paraphrases.push("in an assignment"); }
+@after { paraphrases.pop(); }
+        : path_expr '=' rvalue -> ^(ASSIGN path_expr rvalue);
 rvalue
-	    :	receive_base -> ^(RECEIVE receive_base)
-		    | invoke_base -> ^(INVOKE invoke_base)
-        | request_base -> ^(REQUEST request_base)
-        | resource | expr | xml_literal;
+@init { paraphrases.push("in an assignment right value"); }
+@after { paraphrases.pop(); }
+	    : receive_base -> ^(RECEIVE receive_base)
+		  | invoke_base -> ^(INVOKE invoke_base)
+          | request_base -> ^(REQUEST request_base)
+          | resource | expr | xml_literal;
 	
-throw_ex:	'throw' '('? ns_id ')'? -> ^(THROW ns_id);
+throw_ex
+@init { paraphrases.push("in a throw"); }
+@after { paraphrases.pop(); }
+        : 'throw' '('? ns_id ')'? -> ^(THROW ns_id);
 
-wait_ex	:	'wait' '('expr')' -> ^(WAIT expr);
+wait_ex
+@init { paraphrases.push("in a wait"); }
+@after { paraphrases.pop(); }
+
+        : 'wait' '('expr')' -> ^(WAIT expr);
 
 compensate
-	:	'compensate' ('(' ID ')')? -> ^(COMPENSATE ID?);
+@init { paraphrases.push("in a compensate"); }
+@after { paraphrases.pop(); }
+	    : 'compensate' ('(' ID ')')? -> ^(COMPENSATE ID?);
 
 exit	:	'exit' -> ^(EXIT);
 
 // Others
 namespace
-	:	'namespace' ID '=' STRING SEMI -> ^(NAMESPACE ID STRING);
+        : 'namespace' ID '=' STRING SEMI -> ^(NAMESPACE ID STRING);
 
 resource
-    :   'resource' '(' expr? (',' ID)? ')' -> ^(RESOURCE expr? ID?);
+@init { paraphrases.push("in a resource declaration"); }
+@after { paraphrases.pop(); }
+        : 'resource' '(' expr? (',' ID)? ')' -> ^(RESOURCE expr? ID?);
 
 variables
-	:	'var'! v+=variable (','! v+=variable)*;
+@init { paraphrases.push("in variable declaration"); }
+@after { paraphrases.pop(); }
+        : 'var'! v+=variable (','! v+=variable)*;
 variable:	ID VAR_MODS* -> ^(VARIABLE ID VAR_MODS*);
 
 partner_link
+@init { paraphrases.push("in a partner link declaration"); }
+@after { paraphrases.pop(); }
 	:	'partnerLink' pl+=ID (',' pl+=ID)* -> ^(PARTNERLINK $pl+);
 
 correlation

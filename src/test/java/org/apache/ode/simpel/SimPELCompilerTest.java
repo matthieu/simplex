@@ -137,7 +137,7 @@ public class SimPELCompilerTest extends TestCase {
     private static class TestErrorListener implements ErrorListener {
         public StringBuffer messages = new StringBuffer();
 
-        public void reportRecognitionError(String[] tokens, int line, String message, RecognitionException e) {
+        public void reportRecognitionError(int line, int column, String message, RecognitionException e) {
             messages.append(" - line ").append(line).append(": ").append(message).append("\n");
         }
     }

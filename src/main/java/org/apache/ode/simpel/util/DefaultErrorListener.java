@@ -17,20 +17,20 @@ public class DefaultErrorListener implements ErrorListener {
         return _errors;
     }
 
-    public void reportRecognitionError(String[] tokens, int line, String message, RecognitionException e) {
-        _errors.add(new Error(tokens, line, message, e));
-        System.err.println("line " + line + ": " +  message);
+    public void reportRecognitionError(int line, int column, String message, RecognitionException e) {
+        _errors.add(new Error(line, column, message, e));
+        System.err.println(line + ":" + column + " " +  message);
     }
 
     public class Error {
-        public String tokens[];
         public int line;
+        public int column;
         public String message;
         public RecognitionException e;
 
-        public Error(String[] tokens, int line, String message, RecognitionException e) {
-            this.tokens = tokens;
+        public Error(int line, int column, String message, RecognitionException e) {
             this.line = line;
+            this.column = column;
             this.message = message;
             this.e = e;
         }
