@@ -302,9 +302,11 @@ funct_call
 	    :	fn=ID '(' (e+=expr)? (',' e+=expr)* ')' -> ^(CALL ID $e*);
 // TODO add && || !
 s_expr	:	condExpr;
-condExpr:	aexpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) aexpr )?;
+condExpr:	boolExpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) boolExpr )?;
+boolExpr:	aexpr (('&&'|'||')^ aexpr )?;
 aexpr	:	mexpr (('+'|'-') ^ mexpr)*;
-mexpr	:	atom (('*'|'/') ^ atom)* | STRING;
+mexpr	:	unary (('*'|'/') ^ unary)*;
+unary   :   ((('!'|'-')^)? atom) | STRING;
 atom	:	path_expr | INT | '(' s_expr ')' -> s_expr | funct_call;
 path_expr
 	:	pelmt+=ns_id ('.' pelmt+=ns_id)* -> ^(PATH $pelmt+);
