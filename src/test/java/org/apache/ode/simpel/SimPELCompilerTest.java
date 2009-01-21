@@ -7,6 +7,7 @@ import org.apache.ode.Descriptor;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.List;
 
 /**
  * @author Matthieu Riou <mriou@apache.org>
@@ -136,6 +137,10 @@ public class SimPELCompilerTest extends TestCase {
 
     private static class TestErrorListener implements ErrorListener {
         public StringBuffer messages = new StringBuffer();
+
+        public List<CompilationException.Error> getErrors() {
+            return null;
+        }
 
         public void reportRecognitionError(int line, int column, String message, RecognitionException e) {
             messages.append(" - line ").append(line).append(": ").append(message).append("\n");

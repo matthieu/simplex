@@ -106,10 +106,9 @@ public class SimPELCompiler {
         LinkedListTree t = (LinkedListTree)result.getTree();
         StringBuffer b = new StringBuffer();
         toText(t, b);
-        System.out.println(b.toString());
 
         if (t != null) {
-            //  Handle functions separately
+            // Handle functions separately
             handleFunctions(t);
 
             // Pass the tree to the walker for compilation
@@ -127,6 +126,9 @@ public class SimPELCompiler {
             } catch (RecognitionException e) {
                 throw new CompilationException(e);
             }
+            if (errListener.getErrors() != null && errListener.getErrors().size() > 0)
+                throw new CompilationException(errListener.getErrors());
+
             return walker.getBuilder().getProcess();
         }
         return null;

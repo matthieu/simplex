@@ -2,6 +2,7 @@ package org.apache.ode.simpel.util;
 
 import org.antlr.runtime.RecognitionException;
 import org.apache.ode.simpel.ErrorListener;
+import org.apache.ode.simpel.CompilationException;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -11,28 +12,15 @@ import java.util.List;
  */
 public class DefaultErrorListener implements ErrorListener {
 
-    private LinkedList<Error> _errors = new LinkedList<Error>();
+    private LinkedList<CompilationException.Error> _errors = new LinkedList<CompilationException.Error>();
 
-    public List<Error> getErrors() {
+    public List<CompilationException.Error> getErrors() {
         return _errors;
     }
 
     public void reportRecognitionError(int line, int column, String message, RecognitionException e) {
-        _errors.add(new Error(line, column, message, e));
+        _errors.add(new CompilationException.Error(line, column, message, e));
         System.err.println(line + ":" + column + " " +  message);
     }
 
-    public class Error {
-        public int line;
-        public int column;
-        public String message;
-        public RecognitionException e;
-
-        public Error(int line, int column, String message, RecognitionException e) {
-            this.line = line;
-            this.column = column;
-            this.message = message;
-            this.e = e;
-        }
-    }
 }
