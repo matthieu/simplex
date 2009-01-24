@@ -87,7 +87,12 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         Object res = cx.evaluateString(scope, forged, "<expr>", 0, null);
         // Second extracting the resulting variable value
         if (expr.getLValue() != null) {
-            res = scope.getEnv().get(expr.getLVariable());
+            if (scope.getEnv().get(expr.getLVariable()) != null) {
+                res = scope.getEnv().get(expr.getLVariable());
+            } else {
+                scope.forceDelegate = true;
+                res = cx.evaluateString(scope, expr.getLVariable(), "<expr>", 0, null);
+            }
             OVarType varType = expr.getReferencedVariable(expr.getLVariable()).type;
             // Setting variables runtime type
             if (res instanceof String) varType.underlyingType = OVarType.STRING_TYPE;
@@ -139,12 +144,15 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         private SimPELExpr _expr;
         private Context _cx;
         private HashMap<String,Object> _env = new HashMap<String,Object>();
+        private Scriptable _parentScope;
+        public boolean forceDelegate = false;
 
         private ODEDelegator(Scriptable obj, EvaluationContext evaluationContext, SimPELExpr expr, Context cx) {
             super(obj);
             _evaluationContext = evaluationContext;
             _expr = expr;
             _cx = cx;
+            _parentScope = obj;
         }
 
         public void setXmlLib(XMLLib _xmlLib) {
@@ -154,7 +162,7 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         public Object get(String name, Scriptable start) {
             try {
                 OScope.Variable v = _expr.getReferencedVariable(name);
-                if (v == null) return super.get(name, start);
+                if (v == null || forceDelegate) return super.get(name, start);
 
                 if (_env.get(name) != null) return _env.get(name);
 
@@ -229,7 +237,6 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         public void put(String name, Scriptable start, Object value) {
             _env.put(name, value);
         }
-
         
         public HashMap<String, Object> getEnv() {
             return _env;
@@ -237,6 +244,11 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
 
         public Scriptable getObj() {
             return obj;
+        }
+
+        @Override
+        public Scriptable getParentScope() {
+            return _parentScope;
         }
     }
 
