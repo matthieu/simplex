@@ -38,8 +38,7 @@ public class ProcessWebResource {
                 return Response.status(204).build();
             } else {
                 return Response.status(200)
-                        .entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
-                                .getFirstChildElement(mex.getResponse().getMessage()))))
+                        .entity(unwrapResponse(mex.getResponse().getMessage()))
                         .type("application/xml")
                         .header("Location", _root+mex.getResource().getUrl())
                         .build();
@@ -85,13 +84,19 @@ public class ProcessWebResource {
                     b = Response.status(201).header("Location", _root + mex.getResource().getUrl());
                 else
                     b = Response.status(200);
-                return b.entity(DOMUtils.domToString(DOMUtils.getFirstChildElement(DOMUtils
-                                .getFirstChildElement(mex.getResponse().getMessage()))))
+                return b.entity(unwrapResponse(mex.getResponse().getMessage()))
                         .type("application/xml")
                         .build();
             }
         }
         else return Response.status(405).header("Allow", _resource.methods()).build();
+    }
+
+    private String unwrapResponse(Element resp) {
+        Element partElmt = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(resp));
+        Element unwrapped = DOMUtils.getFirstChildElement(partElmt);
+        if (unwrapped == null) return partElmt.getTextContent();
+        else return DOMUtils.domToString(unwrapped);
     }
 
     // This sucks big time

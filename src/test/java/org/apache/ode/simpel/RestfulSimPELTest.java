@@ -32,8 +32,7 @@ public class RestfulSimPELTest extends TestCase {
     private static final String HELLO_WORLD =
             "process HelloWorld { \n" +
             "   receive(self) { |name| \n" +
-            "       helloTmp = \"Hello \" + name; \n" +
-            "       helloXml = <hello>{helloTmp}</hello>; \n" +
+            "       helloXml = <hello>{\"Hello \" + name}</hello>; \n" +
             "       reply(helloXml); \n" +
             "   }\n" +
             "}";
@@ -49,7 +48,7 @@ public class RestfulSimPELTest extends TestCase {
 
         WebResource wr = c.resource("http://localhost:3434/hello");
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/HelloWorld\">foo</simpelWrapper>");
+                .post(ClientResponse.class, "<wrapper>foo</wrapper>");
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
         assertTrue(response.indexOf("Hello foo") > 0);
@@ -61,6 +60,7 @@ public class RestfulSimPELTest extends TestCase {
             "process Counter {\n" +
             "   counter = receive(self); \n" +
             "   reply(counter, self); \n" +
+
             "   value = resource(\"/value\"); \n" +
             "   inc = resource(\"/inc\"); \n" +
             "   dec = resource(\"/dec\"); \n" +
@@ -97,12 +97,12 @@ public class RestfulSimPELTest extends TestCase {
         // Starting the counter process
         WebResource wr = c.resource("http://localhost:3434/counter"); // TODO default on process name
         ClientResponse createResponse = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/Counter\">3</simpelWrapper>");
+                .post(ClientResponse.class, "<counter>3</counter>");
         String response = createResponse.getEntity(String.class);
         String location = createResponse.getMetadata().get("Location").get(0);
         assertTrue(createResponse.getStatus() == 201);
         assertTrue(location.matches(".*/counter/[0-9]*$"));
-        assertTrue(response.indexOf("3") > 0);
+        assertEquals(response, "3");
 
         // Requesting links
         WebResource instance = c.resource(location);
@@ -119,7 +119,7 @@ public class RestfulSimPELTest extends TestCase {
         ClientResponse valueResponse = instance.path("/value").type("application/xml").get(ClientResponse.class);
         response = valueResponse.getEntity(String.class);
         assertTrue(valueResponse.getStatus() == 200);
-        assertTrue(response.indexOf("3") > 0);
+        assertTrue(response.indexOf("3") >= 0);
 
         // Incrementing twice
         ClientResponse incResponse;
@@ -128,14 +128,14 @@ public class RestfulSimPELTest extends TestCase {
             response = incResponse.getEntity(String.class);
             assertTrue(incResponse.getStatus() == 200);
             System.out.println("=> " + response);
-            assertTrue(response.indexOf(""+(4+n)) > 0);
+            assertTrue(response.indexOf(""+(4+n)) >= 0);
         }
 
         // Checking value again, should be 5 now
         valueResponse = instance.path("/value").type("application/xml").get(ClientResponse.class);
         response = valueResponse.getEntity(String.class);
         assertTrue(valueResponse.getStatus() == 200);
-        assertTrue(response.indexOf("5") > 0);
+        assertTrue(response.indexOf("5") >= 0);
 
         // Decrementing counter to 0 to let process complete
         ClientResponse decResponse;
@@ -143,7 +143,7 @@ public class RestfulSimPELTest extends TestCase {
             decResponse = instance.path("/dec").type("application/xml").post(ClientResponse.class);
             response = decResponse.getEntity(String.class);
             assertTrue(valueResponse.getStatus() == 200);
-            assertTrue(response.indexOf(""+(4-n)) > 0);
+            assertTrue(response.indexOf(""+(4-n)) >= 0);
         }
 
         // The process shouldn't be here anymore
@@ -173,10 +173,10 @@ public class RestfulSimPELTest extends TestCase {
 
         WebResource wr = c.resource("http://localhost:3434/feedget");
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/CallingGet\">OffTheLip</simpelWrapper>");
+                .post(ClientResponse.class, "<name>OffTheLip</name>");
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
-        assertTrue(response.indexOf("Off The Lip") > 0);
+        assertEquals(response, "Off The Lip");
     }
 
     public static final String GET_PUT_POST_DELETE =
@@ -213,7 +213,7 @@ public class RestfulSimPELTest extends TestCase {
                 .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/AllMethods\">foo</simpelWrapper>");
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
-        assertTrue(response.indexOf("GETPOSTfooPUTbar") > 0);
+        assertEquals("GETPOSTfooPUTbar", response);
     }
 
     public static final String POST_WITH_201 =
@@ -243,10 +243,10 @@ public class RestfulSimPELTest extends TestCase {
 
         WebResource wr = c.resource("http://localhost:3434/post201proc");
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
-                .post(ClientResponse.class, "<simpelWrapper xmlns=\"http://ode.apache.org/simpel/1.0/definition/PostRedirect\">foo</simpelWrapper>");
+                .post(ClientResponse.class, "<foo>foo</foo>");
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
-        assertTrue(response.indexOf("http://foo/bar") > 0);
+        assertEquals(response, "http://foo/bar");
     }
 
 }
