@@ -15,12 +15,12 @@ public class ErrorMessageBuilder {
         String msg = null;
         if (e instanceof NoViableAltException) {
             if (tokenNames == null) msg = "Invalid character";
-            else msg = "Syntax error, unexpected token " + tokenNames[e.token.getType()];
+            else msg = "Syntax error, unexpected token " + e.token.getText();
         } else if (e instanceof MismatchedTokenException) {
             MismatchedTokenException mte = (MismatchedTokenException) e;
-            msg = "Syntax error, unexpected token " + tokenNames[e.token.getType()] + ", expecting " + tokenNames[mte.expecting];
+            msg = "Syntax error, unexpected token " + e.token.getText() + ", expecting " + tokenNames[mte.expecting];
         } else if (e instanceof EarlyExitException) {
-            msg = "At least one element is required at " + tokenNames[e.token.getType()];
+            msg = "At least one element is required at " + e.token.getText();
         }
         if (msg != null && paraphrase != null) msg = msg + " " + paraphrase;
         return msg;

@@ -11,6 +11,7 @@ import org.apache.ode.simpel.antlr.SimPELLexer;
 import org.apache.ode.simpel.antlr.SimPELParser;
 import org.apache.ode.simpel.antlr.SimPELWalker;
 import org.apache.ode.simpel.util.DefaultErrorListener;
+import org.apache.ode.simpel.util.E4XExprParserHelper;
 import org.apache.ode.simpel.omodel.OBuilder;
 import org.apache.ode.Descriptor;
 import org.mozilla.javascript.Context;
@@ -18,6 +19,7 @@ import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.serialize.ScriptableOutputStream;
 import org.mozilla.javascript.serialize.ScriptableInputStream;
 import uk.co.badgersinfoil.e4x.antlr.*;
+import uk.co.badgersinfoil.e4x.E4XHelper;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -95,6 +97,11 @@ public class SimPELCompiler {
         parser.setTreeAdaptor(new LinkedListTreeAdaptor());
         parser.setInput(lexer, charstream);
         parser.setErrorListener(errListener);
+        E4XHelper e4xHelper = new E4XHelper();
+        E4XExprParserHelper e4xParserHelper = new E4XExprParserHelper();
+        e4xParserHelper.setErrorListener(errListener);
+        e4xHelper.setExpressionParser(e4xParserHelper);
+        parser.setE4XHelper(e4xHelper);
 
         SimPELParser.program_return result = null;
         try {

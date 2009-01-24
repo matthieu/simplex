@@ -90,7 +90,7 @@ define "simpel" do
   compile.enhance([task('tweak_antlr')])
   compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging,
     ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
-    file(_("lib/e4x-grammar-0.1.jar")), ANTLR, file(_("lib/rhino-1.7R2pre-patched.jar"))
+    file(_("lib/e4x-grammar-0.2.jar")), ANTLR, file(_("lib/rhino-1.7R2pre-patched.jar"))
   test.using :fork => :each
   package :jar
 end

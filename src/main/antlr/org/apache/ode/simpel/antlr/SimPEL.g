@@ -55,7 +55,8 @@ import org.apache.ode.simpel.util.JSHelper;
     private CharStream cs;
     private ErrorListener el;
     private Stack paraphrases = new Stack();
-    
+    private E4XHelper e4xHelper;
+
     public void setInput(SimPELLexer lexer, CharStream cs) {
         this.lexer = lexer;
         this.cs = cs;
@@ -63,10 +64,13 @@ import org.apache.ode.simpel.util.JSHelper;
     public void setErrorListener(ErrorListener el) {
     	this.el = el;
     }
+    public void setE4XHelper(E4XHelper h) {
+        e4xHelper = h;
+    }
 
     /** Handle 'island grammar' for embeded XML-literal elements. */
     private LinkedListTree parseXMLLiteral() throws RecognitionException {
-        return E4XHelper.parseXMLLiteral(lexer, cs, (LinkedListTokenStream)input);
+        return e4xHelper.parseXMLLiteral(lexer, cs, (LinkedListTokenStream)input);
     }
     /** Handle 'island grammar' for embeded JavaScript-literal elements. */
     private LinkedListTree parseJSLiteral() throws RecognitionException {
@@ -78,7 +82,7 @@ import org.apache.ode.simpel.util.JSHelper;
     }
     
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-//    	  List stack = getRuleInvocationStack(e, this.getClass().getName());
+        if (paraphrases.size() == 0) return super.getErrorMessage(e, tokenNames);
         String msg = ErrorMessageBuilder.msg(e, tokenNames, (String) paraphrases.peek());
         if (msg == null) msg = super.getErrorMessage(e, tokenNames);
         return msg;
@@ -87,6 +91,18 @@ import org.apache.ode.simpel.util.JSHelper;
     public String getTokenErrorDisplay(Token t) {
         return t.toString();
     }
+
+    /**
+     * Returns the input left unconsumed after the last parse operation.
+     * Because of lookahead in the parser, there is no guarantee that the
+     * lexer has not consumed input ahead of the current parse-point for
+     * any abritrary rule. This method is only intended to grab the
+     * remaining input after recognising 'xmlPrimary'.
+     */
+    public String getInputTail() {
+        return cs.substring(cs.index()-1, cs.size()-1);
+    }
+
 }
 
 // MAIN BPEL SYNTAX
@@ -318,9 +334,11 @@ ns_id	:	(pr=ID '::')? loc=ID ('(' ')')? -> ^(NS $pr? $loc);
 xml_literal
 @init { LinkedListTree xml = null; }
 	:	// We have to have the LT in the outer grammar for lookahead
-		// in AS3Parser to be able to predict that the xmlLiteral rule
-		// should be used.
+		// to be able to predict that the xmlLiteral rule should be used.
 		'<' { xml=parseXMLLiteral(); } -> { xml };
+
+e4x_expr
+        : L_CURLY! s_expr '}'!;
 
 js_block
 @init { LinkedListTree js = null; }
@@ -337,6 +355,8 @@ INT	:	(DIGIT )+ ;
 STRING	:	'"' ( ESCAPE_SEQ | ~('\\'|'"') )* '"';
 ESCAPE_SEQ
 	:	'\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\');
+
+L_CURLY: '{';
 
 SL_COMMENTS
 	:	'//' .* CR { $channel = HIDDEN; };

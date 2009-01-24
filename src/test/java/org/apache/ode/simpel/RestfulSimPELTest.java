@@ -30,10 +30,11 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     private static final String HELLO_WORLD =
-            "process HelloWorld {\n" +
-            "   receive(self) { |name|\n" +
-            "       helloName = \"Hello \" + name;\n" +
-            "       reply(helloName);\n" +
+            "process HelloWorld { \n" +
+            "   receive(self) { |name| \n" +
+            "       helloTmp = \"Hello \" + name; \n" +
+            "       helloXml = <hello>{helloTmp}</hello>; \n" +
+            "       reply(helloXml); \n" +
             "   }\n" +
             "}";
 

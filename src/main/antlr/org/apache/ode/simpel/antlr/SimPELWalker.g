@@ -352,7 +352,7 @@ xmlElement
 xmlAttribute
 	:	^(XML_ATTRIBUTE XML_NAME XML_ATTRIBUTE_VALUE) { System.out.println("ATTR " + $XML_NAME.text); };
 xmlElementContent
-	:	xmlMarkup | xmlText | xmlElement;
+	:	xmlMarkup | xmlText | xmlElement | s_expr;
 xmlText :	XML_TEXT | XML_NAME | XML_WS;
 xmlMarkup
 	:	XML_COMMENT | XML_CDATA | XML_PI;
