@@ -1,4 +1,4 @@
-package org.apache.ode.simpel;
+package org.apache.ode.rest;
 
 import org.apache.ode.EmbeddedServer;
 import org.apache.ode.Descriptor;
@@ -103,7 +103,7 @@ public class RestfulSimPELTest extends TestCase {
         String location = createResponse.getMetadata().get("Location").get(0);
         assertTrue(createResponse.getStatus() == 201);
         assertTrue(location.matches(".*/counter/[0-9]*$"));
-        assertEquals(response, "3");
+        assertTrue(response.indexOf("<counter>3</counter>") > 0);
 
         // Requesting links
         WebResource instance = c.resource(location);
@@ -248,6 +248,33 @@ public class RestfulSimPELTest extends TestCase {
         String response = resp.getEntity(String.class);
         System.out.println("=> " + response);
         assertEquals(response, "http://foo/bar");
+    }
+
+    private static final String HELLO_FORM_WORLD =
+            "process HelloFormWorld { \n" +
+            "   receive(self) { |form| \n" +
+            "       helloXml = <hello>{\"Hello \" + form.firstname + \" \" + form.lastname}</hello>; \n" +
+            "       reply(helloXml); \n" +
+            "   }\n" +
+            "}";
+
+    public void testFormHelloWorld() throws Exception {
+        server.start();
+        Descriptor desc = new Descriptor();
+        desc.setAddress("/hello-form");
+        server.deploy(HELLO_FORM_WORLD, desc);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/hello-form");
+        ClientResponse resp = wr.path("/").accept("application/x-www-form-urlencoded").type("application/x-www-form-urlencoded")
+                .post(ClientResponse.class, "firstname=foo&lastname=bar");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("Hello foo bar") > 0);
+        assertTrue(resp.getMetadata().get("Location").get(0), resp.getMetadata().get("Location").get(0).matches(".*/hello-form/[0-9]*"));
+        assertTrue(resp.getStatus() == 201);
     }
 
 }

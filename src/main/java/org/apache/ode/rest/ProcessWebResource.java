@@ -10,6 +10,11 @@ import org.w3c.dom.Document;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.Context;
+import java.util.List;
+import java.util.Map;
 
 public class ProcessWebResource {
 
@@ -47,27 +52,23 @@ public class ProcessWebResource {
         else return Response.status(405).header("Allow", _resource.methods()).build();
     }
 
-    @POST @Consumes("application/xml")
-    public Response post(String content) {
+    public Response post(Element msgElmt) {
         if (_resource.post) {
             RESTInMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
                     _resource.toResource("POST"), new GUID().toString());
             Message request = mex.createMessage(null);
-            if (content.length() > 0) {
-                try {
-                    // TODO support for http headers and parameters as additional parts
-                    Element msgElmt = DOMUtils.stringToDOM(content);
-                    Document doc = DOMUtils.newDocument();
-                    Element docElmt = doc.createElement("document");
-                    Element partElmt = doc.createElement("payload");
-                    doc.appendChild(docElmt);
-                    docElmt.appendChild(partElmt);
-                    partElmt.appendChild(doc.importNode(msgElmt, true));
+            if (msgElmt != null) {
+                // TODO support for http headers and parameters as additional parts
+                Document doc = DOMUtils.newDocument();
+                Element docElmt = doc.createElement("document");
+                Element partElmt = doc.createElement("payload");
+                Element rootElmt = doc.createElement("root");
+                doc.appendChild(docElmt);
+                docElmt.appendChild(partElmt);
+                partElmt.appendChild(rootElmt);
+                rootElmt.appendChild(doc.importNode(msgElmt, true));
 
-                    request.setMessage(docElmt);
-                } catch (Exception e) {
-                    return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
-                }
+                request.setMessage(docElmt);
                 mex.setRequest(request);
             }
             try {
@@ -101,36 +102,68 @@ public class ProcessWebResource {
         else return DOMUtils.domToString(unwrapped);
     }
 
-    // This sucks big time
-
-    @GET @Produces("application/xml") @Path("{subpath}")
+    @GET @Produces("application/xml") @Path("{sub : .*}")
     public Response getSub() {
         return get();
     }
 
-    @GET @Produces("application/xml") @Path("{subpath}/{sub1}")
-    public Response getSubSub() {
-        return get();
+    @POST @Consumes("application/xml")
+    public Response post(String content) {
+        try {
+            Element msgElmt = null;
+            if (content.length() > 0) msgElmt = DOMUtils.stringToDOM(content);
+            return post(msgElmt);
+        } catch (Exception e) {
+            return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
+        }
     }
 
-    @GET @Produces("application/xml") @Path("{subpath}/{sub1}/{sub2}")
-    public Response getSubSubSub() {
-        return get();
-    }
-
-    @POST @Consumes("application/xml") @Path("{subpath}")
+    @POST @Consumes("application/xml") @Path("{sub : .*}")
     public Response postSub(String content) {
-        return post(content);
+        try {
+            Element msgElmt = null;
+            if (content.length() > 0) msgElmt = DOMUtils.stringToDOM(content);
+            return post(msgElmt);
+        } catch (Exception e) {
+            return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
+        }
     }
 
-    @POST @Consumes("application/xml") @Path("{subpath}/{sub1}")
-    public Response postSubSub(String content) {
-        return post(content);
+    @POST @Consumes("application/x-www-form-urlencoded")
+    public Response postEnc(MultivaluedMap<String, String> formParams) {
+        return post(formToXml(formParams));
     }
 
-    @POST @Consumes("application/xml") @Path("{subpath}/{sub1}/{sub2}")
-    public Response postSubSubSub(String content) {
-        return post(content);
+    @POST @Consumes("application/x-www-form-urlencoded") @Path("{sub : .*}")
+    public Response postSubEnc(MultivaluedMap<String, String> formParams) {
+        return post(formToXml(formParams));
+    }
+
+    private Element formToXml(MultivaluedMap<String, String> formParams) {
+        Document doc = DOMUtils.newDocument();
+        Element form = doc.createElement("form");
+        doc.appendChild(form);
+        for (Map.Entry<String, List<String>> param : formParams.entrySet()) {
+            if (param.getValue().size() == 1) {
+                Element k = doc.createElement(param.getKey());
+                k.setTextContent(param.getValue().get(0));
+                form.appendChild(k);
+            } else {
+                // TODO support Rails encoding conventions as well
+                Element container = doc.createElement(pluralize(param.getKey()));
+                for (String s : param.getValue()) {
+                    Element e = doc.createElement(param.getKey());
+                    e.setTextContent(s);
+                    container.appendChild(e);
+                }
+            }
+        }
+        return form;
+    }
+
+    private String pluralize(String s) {
+        // Doing it the lazy way for now TODO get all pluralization rules from Rails
+        return s + "s";
     }
 
 //    @GET @Produces("application/xhtml+xml")

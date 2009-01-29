@@ -24,6 +24,7 @@ VERSION_NUMBER = "1.2-SNAPSHOT"
 NEXT_VERSION = "1.2"
 
 ANTLR               = "org.antlr:antlr:jar:3.0.1"
+ANTLR_TEMPLATE      = "org.antlr:stringtemplate:jar:3.0"
 ASM                 = "asm:asm:jar:3.1"
 COMMONS             = struct(
   :logging          =>"commons-logging:commons-logging:jar:1.1",
@@ -40,7 +41,7 @@ JAVAX               = struct(
   :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0",
   :rest             =>"javax.ws.rs:jsr311-api:jar:1.0"
 )
-JERSEY              = group("jersey-server", "jersey-client", "jersey-core", :under=>"com.sun.jersey", :version=>"1.0")
+JERSEY              = group("jersey-server", "jersey-client", "jersey-core", :under=>"com.sun.jersey", :version=>"1.0.1")
 JETTY               = group("jetty", "jetty-util", "servlet-api-2.5", :under=>"org.mortbay.jetty", :version=>"6.1.11")
 LOG4J               = "log4j:log4j:jar:1.2.15"
 ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-runtimes", 
@@ -90,7 +91,7 @@ define "simpel" do
   compile.enhance([task('tweak_antlr')])
   compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging,
     ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
-    file(_("lib/e4x-grammar-0.2.jar")), ANTLR, file(_("lib/rhino-1.7R2pre-patched.jar"))
+    file(_("lib/e4x-grammar-0.2.jar")), ANTLR, ANTLR_TEMPLATE, file(_("lib/rhino-1.7R2pre-patched.jar"))
   test.using :fork => :each
   package :jar
 end
