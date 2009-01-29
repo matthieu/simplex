@@ -250,7 +250,7 @@ public class RestfulSimPELTest extends TestCase {
         assertEquals(response, "http://foo/bar");
     }
 
-    private static final String HELLO_FORM_WORLD =
+    private static final String HELLO_FORM_WORLD = // TODO reply with HTML
             "process HelloFormWorld { \n" +
             "   receive(self) { |form| \n" +
             "       helloXml = <hello>{\"Hello \" + form.firstname + \" \" + form.lastname}</hello>; \n" +

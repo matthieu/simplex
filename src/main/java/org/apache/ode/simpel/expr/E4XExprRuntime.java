@@ -18,6 +18,7 @@ import org.mozilla.javascript.xml.XMLObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import javax.xml.namespace.QName;
 import java.util.*;
@@ -108,7 +109,9 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 // Only content is copied, need to wrap
                 Document doc = DOMUtils.newDocument();
                 Element wrapper = doc.createElement("assignWrapper");
-                wrapper.appendChild(doc.importNode(XMLLibImpl.toDomNode(res), true));
+                Node resNode = doc.importNode(XMLLibImpl.toDomNode(res), true);
+                wrapper.appendChild(resNode);
+                if (resNode.getNodeType() == Node.ELEMENT_NODE) mergeHeaders((Element) resNode);
                 resList.add(wrapper);
             } catch (IllegalArgumentException e) {
                 // Rhino makes it pretty hard to use it sXML impl, XML and XMLList are package level
@@ -197,11 +200,14 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
                 // When we're querying on headers, the sub-element is supposed to be right under the
                 // current. To avoid pollution of the main user variable we store it one level up so
                 // we're readjusting here.
-                if (_expr.getExpr().indexOf(".headers") > 0 && node.getParentNode() != null &&
-                        node.getParentNode().getNodeType() == Node.ELEMENT_NODE) {
+                if (!forceDelegate && (_expr.getExpr().indexOf(".headers") > 0
+                        || (_expr.getLValue() != null && _expr.getLValue().indexOf(".headers") > 0)) 
+                        && node.getParentNode() != null
+                        && node.getParentNode().getNodeType() == Node.ELEMENT_NODE) {
                     Element parent = (Element) node.getParentNode();
                     Element headers = DOMUtils.findChildByName(parent, new QName(null, "headers"));
-                    node.appendChild(node.getOwnerDocument().importNode(headers, true));
+                    if (headers != null)
+                        node.appendChild(node.getOwnerDocument().importNode(headers, true));
                 }
 
                 // Have to remove the xml header otherwise it confuses Rhino
@@ -279,4 +285,29 @@ public class E4XExprRuntime implements ExpressionLanguageRuntime {
         for (String s : ss) buffer.append(s);
         return buffer.toString();
     }
+
+    private void mergeHeaders(Element elmt) {
+        // As a convenience during E4X assignment, headers is a subnode of the main node. To avoid pollution
+        // it's actually stored as a subnode of the parent so we move/merge here.
+        NodeList elmtHeadersNL = elmt.getElementsByTagName("headers");
+        if (elmtHeadersNL.getLength() > 0) {
+            Element elmtHeaders = (Element) elmtHeadersNL.item(0);
+            Element parent = (Element) elmt.getParentNode();
+            elmt.removeChild(elmtHeaders);
+            Element parentHeaders = DOMUtils.getElementByID(parent, "headers");
+            if (parentHeaders == null) {
+                parent.appendChild(elmtHeaders);
+            } else {
+                NodeList headerChildren = elmtHeaders.getChildNodes();
+                for (int m = 0; m < headerChildren.getLength(); m++) {
+                    Node n = headerChildren.item(m);
+                    if (n.getNodeType() == Node.ELEMENT_NODE) {
+                        n.getParentNode().removeChild(n);
+                        parentHeaders.appendChild(n);
+                    }
+                }
+            }
+        }
+    }
+    
 }

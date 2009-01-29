@@ -7,7 +7,7 @@ import org.apache.log4j.Logger;
 import org.w3c.dom.Element;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
+import org.w3c.dom.NodeList;
 
 import javax.wsdl.Operation;
 import javax.wsdl.Fault;
@@ -15,7 +15,7 @@ import javax.wsdl.Part;
 import javax.xml.namespace.QName;
 import java.util.Set;
 import java.util.HashSet;
-import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
@@ -106,8 +106,10 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         ClientResponse resp;
         WebResource.Builder wr = c.resource(res.getUrl()).path("/").accept(res.getContentType()).type(res.getContentType());
         if (restOutMessageExchange.getRequest() != null) {
+            Element payload = restOutMessageExchange.getRequest().getMessage();
+            handleOutHeaders(payload, wr);
             resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class,
-                    DOMUtils.domToString(unwrapToPayload(restOutMessageExchange.getRequest().getMessage())));
+                    DOMUtils.domToString(unwrapToPayload(payload)));
         } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
 
         if (resp.getStatus() == 204) {
@@ -115,10 +117,29 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             return;
         }
 
-        // TODO check more status
         String response = resp.getEntity(String.class);
+
+        if (resp.getStatus() == 401) {
+            QName faultName = new QName("http://ode.apache.org/fault/http/", "http401");
+            Document odeMsg = DOMUtils.newDocument();
+            Element odeMsgEl = odeMsg.createElementNS(null, "message");
+            odeMsg.appendChild(odeMsgEl);
+            Element partElmt = odeMsg.createElement("payload");
+            odeMsgEl.appendChild(partElmt);
+            Element methodElmt = odeMsg.createElementNS(faultName.getNamespaceURI(), faultName.getLocalPart());
+            partElmt.appendChild(methodElmt);
+            methodElmt.setTextContent(response);
+
+            Message responseMsg = restOutMessageExchange.createMessage(null);
+            responseMsg.setMessage(odeMsgEl);
+            restOutMessageExchange.replyWithFault(faultName, responseMsg);
+            return;
+        }
+
+        // TODO handle failure status
+        // TODO allow POST over simple form url-encoded
         Element responseXML = null;
-        if (response != null && response.length() > 0) {
+        if (response != null && response.trim().length() > 0) {
             try {
                 responseXML = DOMUtils.stringToDOM(response);
             } catch (Exception e) {
@@ -185,6 +206,34 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             payload = doc.createTextNode(DOMUtils.getTextContent(root));
         }
         return payload;
+    }
+
+    private void handleOutHeaders(Element msg, WebResource.Builder wr) {
+        Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(msg));
+        Node headers = DOMUtils.findChildByName(root, new QName(null, "headers"));
+        if (headers != null) {
+            NodeList headerElmts = headers.getChildNodes();
+            for (int m = 0; m < headerElmts.getLength(); m++) {
+                Node n = headerElmts.item(m);
+                if (n.getNodeType() == Node.ELEMENT_NODE) {
+                    if (n.getNodeName().equals("basicAuth")) {
+                        Element login = DOMUtils.findChildByName((Element) n, new QName(null, "login"));
+                        Element password = DOMUtils.findChildByName((Element) n, new QName(null, "password"));
+                        if (login != null && password != null) {
+                            // TODO rely on Jersey basic auth once 1.0.2 is released
+                            try {
+                                byte[] unencoded = (login.getTextContent() + ":" + password.getTextContent()).getBytes("UTF-8");
+                                String credString = Base64.encode(unencoded);
+                                String authHeader = "Basic " + credString;
+                                wr.header("authorization", authHeader);
+                            } catch (UnsupportedEncodingException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private Element withHeaders(Element element) {

@@ -13,6 +13,6 @@ public class PostWith201Resource {
     @Consumes("application/xml")
     @Produces("application/xml")
     public Response post() {
-        return Response.status(201).header("Location", "http://foo/bar").build();
+        return Response.status(201).header("Location", "http://foo/bar").entity("<response><appStatus>ok</appStatus></response>").build();
     }
 }

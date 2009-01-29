@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.core.Context;
+import javax.xml.namespace.QName;
 import java.util.List;
 import java.util.Map;
 
@@ -62,7 +63,8 @@ public class ProcessWebResource {
                 Document doc = DOMUtils.newDocument();
                 Element docElmt = doc.createElement("document");
                 Element partElmt = doc.createElement("payload");
-                Element rootElmt = doc.createElement("root");
+                // For some reason, this sometimes ends up in assignment as a node with no local name if not ns'd
+                Element rootElmt = doc.createElementNS(null, "root");
                 doc.appendChild(docElmt);
                 docElmt.appendChild(partElmt);
                 partElmt.appendChild(rootElmt);
