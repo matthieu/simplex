@@ -316,7 +316,6 @@ expr	:	s_expr | EXT_EXPR;
 
 funct_call
 	    :	fn=ID '(' (e+=expr)? (',' e+=expr)* ')' -> ^(CALL ID $e*);
-// TODO add && || !
 s_expr	:	condExpr;
 condExpr:	boolExpr ( ('==' ^|'!=' ^|'<' ^|'>' ^|'<=' ^|'>=' ^) boolExpr )?;
 boolExpr:	aexpr (('&&'|'||')^ aexpr )?;

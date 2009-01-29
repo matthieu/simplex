@@ -76,6 +76,8 @@ public class ProcessWebResource {
                 return Response.status(408).entity("The server timed out while processing the request.").build();
             }
 
+            // TODO handle faults and failures
+
             if (mex.getResponse() == null) {
                 return Response.status(204).build();
             } else {

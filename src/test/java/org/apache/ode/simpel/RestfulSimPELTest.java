@@ -64,6 +64,7 @@ public class RestfulSimPELTest extends TestCase {
             "   value = resource(\"/value\"); \n" +
             "   inc = resource(\"/inc\"); \n" +
             "   dec = resource(\"/dec\"); \n" +
+            "   counter = parseInt(counter); \n" +
             "   scope { \n" +
             "       while(counter>0) { \n" +
             "           wait(\"PT1S\"); \n" + // TODO support time as well as duration
@@ -74,20 +75,20 @@ public class RestfulSimPELTest extends TestCase {
             "       links.decrement = dec; \n" +
             "       links.value = value; \n" +
             "       reply(links); \n" +
-            "   } onQuery(value) {\n" +
+            "   } onQuery(value) { \n" +
             "       reply(counter); \n" +
-            "   } onReceive(dec) {\n" +
+            "   } onReceive(dec) { \n" +
             "       counter = counter - 1; \n" +
             "       reply(counter); \n" +
-            "   } onReceive(inc) {\n" +
-            "       counter = counter - (-1); \n" + // TODO fix the - - hack
+            "   } onReceive(inc) { \n" +
+            "       counter = counter + 1; \n" + // TODO fix the - - hack
             "       reply(counter); \n" +
             "   } \n" +
             "}";
 
     public void testCounter() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
+        Descriptor desc = new Descriptor(); // TODO remove the descriptor to use environment-based configuration
         desc.setAddress("/counter");
         server.deploy(COUNTER, desc);
 

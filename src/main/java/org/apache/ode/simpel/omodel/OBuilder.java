@@ -23,7 +23,6 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * TODO e4x templates
  * TODO resources aren't available if they're not used
  */
 public class OBuilder extends BaseCompiler {
