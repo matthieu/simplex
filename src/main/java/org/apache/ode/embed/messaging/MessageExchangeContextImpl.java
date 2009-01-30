@@ -119,36 +119,24 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
 
         String response = resp.getEntity(String.class);
 
-        if (resp.getStatus() == 401) {
-            QName faultName = new QName("http://ode.apache.org/fault/http/", "http401");
-            Document odeMsg = DOMUtils.newDocument();
-            Element odeMsgEl = odeMsg.createElementNS(null, "message");
-            odeMsg.appendChild(odeMsgEl);
-            Element partElmt = odeMsg.createElement("payload");
-            odeMsgEl.appendChild(partElmt);
-            Element methodElmt = odeMsg.createElementNS(faultName.getNamespaceURI(), faultName.getLocalPart());
-            partElmt.appendChild(methodElmt);
-            methodElmt.setTextContent(response);
-
-            Message responseMsg = restOutMessageExchange.createMessage(null);
-            responseMsg.setMessage(odeMsgEl);
-            restOutMessageExchange.replyWithFault(faultName, responseMsg);
+        int responseType = isFaultOrFailure(resp.getStatus());
+        if (responseType > 0) {
+            faultFromHttpStatus(resp.getStatus(), response, restOutMessageExchange);
+            return;
+        }
+        if (responseType < 0) {
+            fail(res.getUrl(), "http" + resp.getStatus(), "Failing with HTTP response code "
+                    + resp.getStatus(), restOutMessageExchange);
             return;
         }
 
-        // TODO handle failure status
         // TODO allow POST over simple form url-encoded
         Element responseXML = null;
         if (response != null && response.trim().length() > 0) {
             try {
                 responseXML = DOMUtils.stringToDOM(response);
             } catch (Exception e) {
-                Document doc = DOMUtils.newDocument();
-                Element failureElmt = doc.createElement("requestFailure");
-                failureElmt.setTextContent(response);
-                __log.debug("Request to " + res.getUrl() + " failed, response couldn't be parsed: " + response);
-                restOutMessageExchange.replyWithFailure(MessageExchange.FailureType.FORMAT_ERROR,
-                        "Can't parse the response to " + res.getUrl(), failureElmt);
+                fail(res.getUrl(), "parseError", "Response couldn't be parsed: " + response, restOutMessageExchange);
                 return;
             }
         }
@@ -208,6 +196,31 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         return payload;
     }
 
+    private void faultFromHttpStatus(int s, String response, RESTOutMessageExchange mex) {
+        QName faultName = new QName(null, "http401");
+        Document odeMsg = DOMUtils.newDocument();
+        Element odeMsgEl = odeMsg.createElementNS(null, "message");
+        odeMsg.appendChild(odeMsgEl);
+        Element partElmt = odeMsg.createElement("payload");
+        odeMsgEl.appendChild(partElmt);
+        Element methodElmt = odeMsg.createElementNS(faultName.getNamespaceURI(), faultName.getLocalPart());
+        partElmt.appendChild(methodElmt);
+        methodElmt.setTextContent(response);
+
+        Message responseMsg = mex.createMessage(null);
+        responseMsg.setMessage(odeMsgEl);
+        mex.replyWithFault(faultName, responseMsg);
+    }
+
+    private void fail(String calledUrl, String errElmt, String text, RESTOutMessageExchange mex) {
+        Document doc = DOMUtils.newDocument();
+        Element failureElmt = doc.createElement(errElmt);
+        failureElmt.setTextContent(text);
+        String fullMsg = "Request to " + calledUrl + " failed. " + text;
+        __log.debug(fullMsg);
+        mex.replyWithFailure(MessageExchange.FailureType.FORMAT_ERROR, fullMsg, failureElmt);
+    }
+
     private void handleOutHeaders(Element msg, WebResource.Builder wr) {
         Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(msg));
         Node headers = DOMUtils.findChildByName(root, new QName(null, "headers"));
@@ -245,4 +258,25 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         }
         return res;
     }
+
+    /**
+     * @param s, the status code to test, must be in [400, 600[
+     * @return 1 if fault, -1 if failure, 0 if success
+     */
+    public static int isFaultOrFailure(int s) {
+        if (s < 100 || s >= 600)
+            throw new IllegalArgumentException("Status-Code must be in interval [400,600]");
+
+        if (s == 500 || s == 501 || s == 502 || s == 505
+                || s == 400 || s == 402 || s == 403 || s == 404 || s == 405 || s == 406
+                || s == 409 || s == 410 || s == 412 || s == 413 || s == 414 || s == 415
+                || s == 411 || s == 416 || s == 417) {
+            return 1;
+        } else if (s == 503 || s == 504 || s == 401 || s == 407 || s == 408) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+    
 }

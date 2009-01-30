@@ -47,7 +47,7 @@ public class ProcessWebResource {
                 return Response.status(204).build();
             } else {
                 return Response.status(200)
-                        .entity(unwrapResponse(mex.getResponse().getMessage()))
+                        .entity(DOMUtils.domToString(unwrapResponse(mex.getResponse().getMessage())))
                         .header("Location", _root+mex.getResource().getUrl())
                         .build();
             }
