@@ -93,5 +93,6 @@ define "simpel" do
     ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
     file(_("lib/e4x-grammar-0.2.jar")), ANTLR, ANTLR_TEMPLATE, file(_("lib/rhino-1.7R2pre-patched.jar"))
   test.using :fork => :each
+  test.exclude 'SingleshotTest'
   package :jar
 end

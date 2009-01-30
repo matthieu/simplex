@@ -267,6 +267,8 @@ public class RestfulSimPELTest extends TestCase {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
 
+        Thread.sleep(10000000);
+
         WebResource wr = c.resource("http://localhost:3434/hello-form");
         ClientResponse resp = wr.path("/").accept("application/x-www-form-urlencoded").type("application/x-www-form-urlencoded")
                 .post(ClientResponse.class, "firstname=foo&lastname=bar");

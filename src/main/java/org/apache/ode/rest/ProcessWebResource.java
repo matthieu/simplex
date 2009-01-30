@@ -5,8 +5,11 @@ import org.apache.ode.bpel.iapi.RESTInMessageExchange;
 import org.apache.ode.embed.ServerLifecycle;
 import org.apache.ode.utils.GUID;
 import org.apache.ode.utils.DOMUtils;
+import org.apache.ode.rest.datam.FEJOML;
 import org.w3c.dom.Element;
 import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
@@ -45,7 +48,6 @@ public class ProcessWebResource {
             } else {
                 return Response.status(200)
                         .entity(unwrapResponse(mex.getResponse().getMessage()))
-                        .type("application/xml")
                         .header("Location", _root+mex.getResource().getUrl())
                         .build();
             }
@@ -53,7 +55,7 @@ public class ProcessWebResource {
         else return Response.status(405).header("Allow", _resource.methods()).build();
     }
 
-    public Response post(Element msgElmt) {
+    public Response post(Element msgElmt, String targetFormat) {
         if (_resource.post) {
             RESTInMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
                     _resource.toResource("POST"), new GUID().toString());
@@ -89,84 +91,63 @@ public class ProcessWebResource {
                     b = Response.status(201).header("Location", _root + mex.getResource().getUrl());
                 else
                     b = Response.status(200);
-                return b.entity(unwrapResponse(mex.getResponse().getMessage()))
-                        .type("application/xml")
+                return b.entity(FEJOML.fromXML(unwrapResponse(mex.getResponse().getMessage()), targetFormat))
                         .build();
             }
         }
         else return Response.status(405).header("Allow", _resource.methods()).build();
     }
 
-    private String unwrapResponse(Element resp) {
+    private Node unwrapResponse(Element resp) {
         Element partElmt = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(resp));
         Element unwrapped = DOMUtils.getFirstChildElement(partElmt);
-        if (unwrapped == null) return partElmt.getTextContent();
-        else return DOMUtils.domToString(unwrapped);
+        if (unwrapped == null)
+            return partElmt.getOwnerDocument().createTextNode(partElmt.getTextContent());
+        else return unwrapped;
     }
 
-    @GET @Produces("application/xml") @Path("{sub : .*}")
+    @GET @Path("{sub : .*}")
+    @Produces("application/xml")
     public Response getSub() {
         return get();
     }
 
-    @POST @Consumes("application/xml")
+    @POST
+    @Consumes("application/xml") @Produces("application/xml")
     public Response post(String content) {
         try {
             Element msgElmt = null;
             if (content.length() > 0) msgElmt = DOMUtils.stringToDOM(content);
-            return post(msgElmt);
+            return post(msgElmt, FEJOML.XML);
         } catch (Exception e) {
             return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
         }
     }
 
-    @POST @Consumes("application/xml") @Path("{sub : .*}")
+    @POST @Path("{sub : .*}")
+    @Consumes("application/xml") @Produces("application/xml")
     public Response postSub(String content) {
         try {
             Element msgElmt = null;
             if (content.length() > 0) msgElmt = DOMUtils.stringToDOM(content);
-            return post(msgElmt);
+            return post(msgElmt, FEJOML.XML);
         } catch (Exception e) {
             return Response.status(400).entity("Couldn't parse XML request.").type("text/plain").build();
         }
     }
 
-    @POST @Consumes("application/x-www-form-urlencoded")
+    @POST
+    @Consumes("application/x-www-form-urlencoded") @Produces("text/html")
     public Response postEnc(MultivaluedMap<String, String> formParams) {
-        return post(formToXml(formParams));
+        return post(FEJOML.formToXML(formParams), FEJOML.FUE);
     }
 
-    @POST @Consumes("application/x-www-form-urlencoded") @Path("{sub : .*}")
+    @POST @Path("{sub : .*}")
+    @Consumes("application/x-www-form-urlencoded") @Produces("text/html")
     public Response postSubEnc(MultivaluedMap<String, String> formParams) {
-        return post(formToXml(formParams));
+        return post(FEJOML.formToXML(formParams), FEJOML.FUE);
     }
 
-    private Element formToXml(MultivaluedMap<String, String> formParams) {
-        Document doc = DOMUtils.newDocument();
-        Element form = doc.createElement("form");
-        doc.appendChild(form);
-        for (Map.Entry<String, List<String>> param : formParams.entrySet()) {
-            if (param.getValue().size() == 1) {
-                Element k = doc.createElement(param.getKey());
-                k.setTextContent(param.getValue().get(0));
-                form.appendChild(k);
-            } else {
-                // TODO support Rails encoding conventions as well
-                Element container = doc.createElement(pluralize(param.getKey()));
-                for (String s : param.getValue()) {
-                    Element e = doc.createElement(param.getKey());
-                    e.setTextContent(s);
-                    container.appendChild(e);
-                }
-            }
-        }
-        return form;
-    }
-
-    private String pluralize(String s) {
-        // Doing it the lazy way for now TODO get all pluralization rules from Rails
-        return s + "s";
-    }
 
 //    @GET @Produces("application/xhtml+xml")
 //    public String getXHTML() {
