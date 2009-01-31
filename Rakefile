@@ -64,35 +64,47 @@ define "simpel" do
   meta_inf << file("NOTICE")
 
   pkg_name = "org.apache.ode.simpel.antlr"
-  antlr_task = antlr([_("src/main/antlr/org/apache/ode/simpel/antlr/SimPEL.g"), 
-                             _("src/main/antlr/org/apache/ode/simpel/antlr/SimPELWalker.g")], 
-                              {:in_package=>pkg_name, :token=>pkg_name})
+  local_libs = file(_("lib/e4x-grammar-0.2.jar")), file(_("lib/rhino-1.7R2pre-patched.jar"))
 
-  # Because of a pending ANTLR bug, we need to insert some additional 
-  # code in generated classes.
-  task('tweak_antlr' => [antlr_task]) do
-    walker = _("target/generated/antlr/org/apache/ode/simpel/antlr/SimPELWalker.java")
-    walker_txt = File.read(walker)
+  define 'lang' do
+    
+    antlr_task = antlr([_("src/main/antlr/org/apache/ode/simpel/antlr/SimPEL.g"), 
+                        _("src/main/antlr/org/apache/ode/simpel/antlr/SimPELWalker.g")], 
+                         {:in_package=>pkg_name, :token=>pkg_name})
 
-    patch_walker = lambda do |regx, offset, txt|
-      insrt_idx = 0
-      while (insrt_idx = walker_txt.index(regx, insrt_idx+1)) do
-        walker_txt.insert(insrt_idx + offset, txt)
+    # Because of a pending ANTLR bug, we need to insert some additional 
+    # code in generated classes.
+    task('tweak_antlr' => [antlr_task]) do
+      walker = _("target/generated/antlr/org/apache/ode/simpel/antlr/SimPELWalker.java")
+      walker_txt = File.read(walker)
+
+      patch_walker = lambda do |regx, offset, txt|
+        insrt_idx = 0
+        while (insrt_idx = walker_txt.index(regx, insrt_idx+1)) do
+          walker_txt.insert(insrt_idx + offset, txt)
+        end
       end
-    end
-    patch_walker[/SimPELWalker.g(.*) \( path_expr \)$/, 37, "lv = (LinkedListTree)input.LT(1);"]
-    patch_walker[/SimPELWalker.g(.*) \( rvalue \)$/, 34, "rv = (LinkedListTree)input.LT(1);"]
-    patch_walker[/SimPELWalker.g(.*) \( expr \)$/, 34, "e = (LinkedListTree)input.LT(1);"]
+      patch_walker[/SimPELWalker.g(.*) \( path_expr \)$/, 37, "lv = (LinkedListTree)input.LT(1);"]
+      patch_walker[/SimPELWalker.g(.*) \( rvalue \)$/, 34, "rv = (LinkedListTree)input.LT(1);"]
+      patch_walker[/SimPELWalker.g(.*) \( expr \)$/, 34, "e = (LinkedListTree)input.LT(1);"]
 
-    File.open(walker, 'w') { |f| f << walker_txt }
+      File.open(walker, 'w') { |f| f << walker_txt }
+    end
+
+    compile.from antlr_task
+    compile.enhance([task('tweak_antlr')])
+    compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging,
+      ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
+      ANTLR, ANTLR_TEMPLATE, local_libs
+    test.using :fork => :each
+    test.exclude 'SingleshotTest'
+    package :jar
   end
 
-  compile.from antlr_task
-  compile.enhance([task('tweak_antlr')])
-  compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging,
-    ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
-    file(_("lib/e4x-grammar-0.2.jar")), ANTLR, ANTLR_TEMPLATE, file(_("lib/rhino-1.7R2pre-patched.jar"))
-  test.using :fork => :each
-  test.exclude 'SingleshotTest'
-  package :jar
+  define 'server' do
+    compile.with projects("lang"), ODE, 
+      LOG4J, JAVAX.transaction
+    package :jar
+  end
+
 end

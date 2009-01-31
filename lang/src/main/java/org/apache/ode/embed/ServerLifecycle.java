@@ -105,12 +105,12 @@ public class ServerLifecycle {
         _server.init();
     }
 
-    private void initDAO() {
+    protected void initDAO() {
         // TODO supporting only in memory for now, extend to datasource usage
         _daoCF = new BpelDAOConnectionFactoryImpl(_txMgr);
     }
 
-    private void initTxMgr() {
+    protected void initTxMgr() {
         if(_txMgr == null) {
             try {
                 GeronimoTxFactory txFactory = new GeronimoTxFactory();
@@ -122,7 +122,7 @@ public class ServerLifecycle {
         }
     }
 
-    private void initDataSource() {
+    protected void initDataSource() {
         jdbcDataSource hsqlds = new jdbcDataSource();
         hsqlds.setDatabase("jdbc:hsqldb:mem:" + new GUID().toString());
         hsqlds.setUser("sa");
@@ -155,7 +155,7 @@ public class ServerLifecycle {
         return scheduler;
     }
 
-    private void initProcessStore() {
+    protected void initProcessStore() {
         // TODO Support persistent store as well
         _store = new EmbeddedStore();
         _store.registerListener(new ProcessStoreListenerImpl());
