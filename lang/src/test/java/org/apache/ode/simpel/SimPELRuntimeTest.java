@@ -31,6 +31,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String HELLO_WORLD =
+            "processConfig.inMem = true;\n" +
             "process HelloWorld {\n" +
             "   receive(myPl, helloOp) { |msgIn|\n" +
             "       msgOut = msgIn + \" World\";\n" +
@@ -51,6 +52,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String XML_DATA_MANIPULATION =
+            "processConfig.inMem = true;\n" +
             "process XmlData {\n" +
             "    receive(dataPl, dataOp) { |msgIn|\n" +
             "        friendInfo = <friend></friend>;\n" +
@@ -84,6 +86,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String SIMPLE_IF =
+            "processConfig.inMem = true;\n" +
             "process SimpleIf {\n" +
             "    receive(ifPl, ifOp) { |quantity|\n" +
             "        if (quantity > 20) {\n" +
@@ -113,6 +116,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     public static final String INVOKE_ONE_WAY =
+            "processConfig.inMem = true;\n" +
             "process InvokeOneWay {\n" +
             "    receive(iowPl, iowOp) { |status|\n" +
             "        invoke(partnerPl, partnerOp, status);\n" +
@@ -145,6 +149,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     public static final String INVOKE_TWO_WAYS =
+            "processConfig.inMem = true;\n" +
             "process InvokeTwoWays {\n" +
             "    receive(itwPl, itwOp) { |initial|\n" +
             "        operands = <operands></operands>; \n"+
@@ -183,6 +188,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String JS_GLOBAL_STATE =
+            "processConfig.inMem = true;\n" +
             "var append = \" Yeeha!\"; \n" +
             "function helloPrepend(p) { return \"Hello \" + p; }; \n" +
             "\n" +
@@ -207,6 +213,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String SIMPLE_CORRELATION =
+            "processConfig.inMem = true;\n" +
             "function getExchangeId(msg) { return msg.id; }; \n" +
             "function getExchangeName(msg) { return msg.name; }; \n" +
             "\n" +
@@ -247,6 +254,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String WHILE_LOOP =
+            "processConfig.inMem = true;\n" +
             "process WhileLoop { \n" +
             "   receive(myPl, firstOp) { |counter| \n" +
             "       i = 0; j = 1; cur = 1; \n" +
@@ -271,6 +279,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String WAIT =
+            "processConfig.inMem = true;\n" +
             "process WaitProcess {\n" +
             "   receive(myPl, helloOp) { |msgIn|\n" +
             "       wait(\"PT1S\");\n" +
@@ -291,6 +300,7 @@ public class SimPELRuntimeTest extends TestCase {
     }
 
     private static final String RECEIVE_ASSIGN =
+            "processConfig.inMem = true;\n" +
             "process ReceiveAssign {\n" +
             "   msgIn = receive(myPl, helloOp); \n" +
             "   msgOut = msgIn + \" World\";\n" +

@@ -143,7 +143,7 @@ public class ServerLifecycle {
 
                 if (!result.next()) {
                     String dbProductName = metaData.getDatabaseProductName();
-                    if (dbProductName.indexOf("Derby") > 0) {
+                    if (dbProductName.indexOf("Derby") >= 0) {
                         stmt = conn.createStatement();
                         stmt.execute(DERBY_SCHEDULER_DDL1);
                         stmt.close();
@@ -154,7 +154,7 @@ public class ServerLifecycle {
                         stmt.execute(DERBY_SCHEDULER_DDL3);
                         stmt.close();
                     }
-                    if (dbProductName.indexOf("hsql") > 0) {
+                    if (dbProductName.indexOf("HSQL") >= 0) {
                         stmt = conn.createStatement();
                         stmt.execute(HSQL_SCHEDULER_DDL);
                     }

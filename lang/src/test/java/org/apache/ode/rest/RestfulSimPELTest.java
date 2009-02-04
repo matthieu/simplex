@@ -30,6 +30,9 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     private static final String HELLO_WORLD =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/hello\";\n" +
+
             "process HelloWorld { \n" +
             "   receive(self) { |name| \n" +
             "       helloXml = <hello>{\"Hello \" + name}</hello>; \n" +
@@ -39,9 +42,7 @@ public class RestfulSimPELTest extends TestCase {
 
     public void testRestfulHelloWorld() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/hello");
-        server.deploy(HELLO_WORLD, desc);
+        server.deploy(HELLO_WORLD);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -57,6 +58,9 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     private static final String COUNTER =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/counter\";\n" +
+
             "process Counter {\n" +
             "   counter = receive(self); \n" +
             "   reply(counter, self); \n" +
@@ -88,9 +92,7 @@ public class RestfulSimPELTest extends TestCase {
 
     public void testCounter() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor(); // TODO remove the descriptor to use environment-based configuration
-        desc.setAddress("/counter");
-        server.deploy(COUNTER, desc);
+        server.deploy(COUNTER);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -154,6 +156,9 @@ public class RestfulSimPELTest extends TestCase {
     }
     
     public static final String CALLING_GET =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/feedget\";\n" +
+
             "var feedBUrl = \"http://feeds.feedburner.com/\"; " +
             "process CallingGet {\n" +
             "   receive(self) { |query|\n" +
@@ -165,9 +170,7 @@ public class RestfulSimPELTest extends TestCase {
 
     public void testCallingGet() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/feedget");
-        server.deploy(CALLING_GET, desc);
+        server.deploy(CALLING_GET);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -181,6 +184,9 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     public static final String GET_PUT_POST_DELETE =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/gppdproc\";\n" +
+
             "var testRoot = \"http://localhost:3434/gppd\"; " +
             "process AllMethods {\n" +
             "   receive(self) { |query|\n" +
@@ -202,9 +208,7 @@ public class RestfulSimPELTest extends TestCase {
 
     public void testAllMethods() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/gppdproc");
-        server.deploy(GET_PUT_POST_DELETE, desc);
+        server.deploy(GET_PUT_POST_DELETE);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -218,6 +222,9 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     public static final String POST_WITH_201 =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/post201proc\";\n" +
+
             "var testRoot = \"http://localhost:3434/post201\"; " +
             "process PostRedirect {\n" +
             "   receive(self) { |query|\n" +
@@ -235,9 +242,7 @@ public class RestfulSimPELTest extends TestCase {
 
     public void testPostWith201() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/post201proc");
-        server.deploy(POST_WITH_201, desc);
+        server.deploy(POST_WITH_201);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -251,6 +256,9 @@ public class RestfulSimPELTest extends TestCase {
     }
 
     private static final String HELLO_FORM_WORLD = // TODO reply with HTML
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/hello-form\";\n" +
+
             "process HelloFormWorld { \n" +
             "   receive(self) { |form| \n" +
             "       helloXml = <hello>{\"Hello \" + form.firstname + \" \" + form.lastname}</hello>; \n" +
@@ -260,9 +268,7 @@ public class RestfulSimPELTest extends TestCase {
 
     public void testFormHelloWorld() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/hello-form");
-        server.deploy(HELLO_FORM_WORLD, desc);
+        server.deploy(HELLO_FORM_WORLD);
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);

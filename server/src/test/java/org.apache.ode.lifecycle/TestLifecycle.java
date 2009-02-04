@@ -24,7 +24,7 @@ public class TestLifecycle extends TestCase {
             "   }\n" +
             "}";
 
-    public void testFSDeploy() throws Exception {
+    public void testFSDeployUndeploy() throws Exception {
         String rootDir = new File(getClass().getClassLoader().getResource("marker").getFile()).getParent();
         StandaloneServer.main(new String[] { rootDir });
 
