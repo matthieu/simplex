@@ -27,9 +27,12 @@ ANTLR               = "org.antlr:antlr:jar:3.0.1"
 ANTLR_TEMPLATE      = "org.antlr:stringtemplate:jar:3.0"
 ASM                 = "asm:asm:jar:3.1"
 COMMONS             = struct(
+  :collections      =>"commons-collections:commons-collections:jar:3.1",
+  :lang             =>"commons-lang:commons-lang:jar:2.1",
   :logging          =>"commons-logging:commons-logging:jar:1.1",
-  :lang             =>"commons-lang:commons-lang:jar:2.1"
+  :primitives       =>"commons-primitives:commons-primitives:jar:1.0"
 )
+DERBY               = "org.apache.derby:derby:jar:10.4.1.3"
 GERONIMO            = struct(
   :kernel           =>"org.apache.geronimo.modules:geronimo-kernel:jar:2.0.1",
   :transaction      =>"org.apache.geronimo.components:geronimo-transaction:jar:2.0.1",
@@ -39,14 +42,18 @@ HSQLDB              = "hsqldb:hsqldb:jar:1.8.0.7"
 JAVAX               = struct(
   :transaction      =>"org.apache.geronimo.specs:geronimo-jta_1.1_spec:jar:1.1",
   :resource         =>"org.apache.geronimo.specs:geronimo-j2ee-connector_1.5_spec:jar:1.0",
+  :persistence      =>"javax.persistence:persistence-api:jar:1.0",
   :rest             =>"javax.ws.rs:jsr311-api:jar:1.0"
 )
 JERSEY              = group("jersey-server", "jersey-client", "jersey-core", :under=>"com.sun.jersey", :version=>"1.0.1")
 JETTY               = group("jetty", "jetty-util", "servlet-api-2.5", :under=>"org.mortbay.jetty", :version=>"6.1.11")
 LOG4J               = "log4j:log4j:jar:1.2.15"
-ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-runtimes", 
+ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-dao-jpa", "ode-runtimes", 
                             "ode-engine", "ode-il-common", "ode-jacob", "ode-scheduler-simple", 
                             "ode-utils", :under=>"org.apache.ode", :version=>"1.3-SNAPSHOT")
+OPENJPA             = ["org.apache.openjpa:openjpa:jar:1.1.0",
+                       "net.sourceforge.serp:serp:jar:1.13.1"]
+TRANQL              = [ "tranql:tranql-connector:jar:1.1", "axion:axion:jar:1.0-M3-dev", COMMONS.primitives ]
 WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"
 XERCES              = "xerces:xercesImpl:jar:2.8.1"
 
@@ -104,6 +111,10 @@ define "simpel" do
   define 'server' do
     compile.with projects("lang"), ODE, 
       LOG4J, JAVAX.transaction
+    test.with JAVAX.resource, COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, 
+      DERBY, TRANQL, OPENJPA, GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence,
+      JAVAX.rest, JETTY, XERCES, ANTLR, ANTLR_TEMPLATE, local_libs, COMMONS.collections, 
+      local_libs
     package :jar
   end
 

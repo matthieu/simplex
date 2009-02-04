@@ -9,6 +9,7 @@ import org.apache.ode.bpel.iapi.Endpoint;
 import org.apache.ode.bpel.iapi.EndpointReference;
 import org.apache.ode.bpel.iapi.ProcessConf;
 import org.apache.ode.bpel.evt.BpelEvent;
+import org.apache.ode.Descriptor;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
 
@@ -21,11 +22,12 @@ import java.util.*;
 public class EmbeddedProcessConf implements ProcessConf {
     private static final String SIMPEL_ENDPOINT_NS = "http://ode.apache.org/simpel/1.0/endpoint";
 
-    private OProcess _oprocess;
+    private ProcessModel _oprocess;
+    private Descriptor _desc;
 
-
-    public EmbeddedProcessConf(OProcess _oprocess) {
-        this._oprocess = _oprocess;
+    public EmbeddedProcessConf(ProcessModel oprocess, Descriptor desc) {
+        _oprocess = oprocess;
+        _desc = desc;
     }
 
     public QName getProcessId() {
@@ -43,7 +45,7 @@ public class EmbeddedProcessConf implements ProcessConf {
     }
 
     public boolean isTransient() {
-        return true;
+        return _desc.isTransient();
     }
 
     public boolean isRestful() {

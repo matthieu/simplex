@@ -16,6 +16,7 @@ import org.apache.ode.simpel.omodel.OBuilder;
 import org.apache.ode.Descriptor;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.NativeObject;
 import org.mozilla.javascript.serialize.ScriptableOutputStream;
 import org.mozilla.javascript.serialize.ScriptableInputStream;
 import uk.co.badgersinfoil.e4x.antlr.*;
@@ -49,13 +50,16 @@ public class SimPELCompiler {
         String header = processDoc.substring(0, m.start());
         String processDef = processDoc.substring(m.start(), processDoc.length());
 
-        OProcess model = buildModel(processDef, desc);
+        byte[] globals = null;
         if (header.trim().length() > 0)
-            model.globalState = buildGlobalState(header);
+            globals = buildGlobalState(header, desc);
+
+        OProcess model = buildModel(processDef, desc);
+        if (globals != null) model.globalState = globals;
         return model;
     }
 
-    private byte[] buildGlobalState(String header) {
+    private byte[] buildGlobalState(String header, Descriptor desc) {
         Context cx = Context.enter();
         cx.setOptimizationLevel(-1);
         Scriptable sharedScope = cx.initStandardObjects();
@@ -64,10 +68,16 @@ public class SimPELCompiler {
         newScope.setPrototype(sharedScope);
         newScope.setParentScope(null);
 
+        // Setting the configuration hash first
+        cx.evaluateString(newScope, "var processConfig = {};", "<cmd>", 1, null);
         cx.evaluateString(newScope, header, "<cmd>", 1, null);
 
+        NativeObject processConf = (NativeObject) cx.evaluateString(newScope, "processConfig;", "<cmd>", 1, null);
+        if (desc.getAddress() == null && processConf.has("address", null)) desc.setAddress((String) processConf.get("address", null));
+        if (processConf.has("inMem", null)) desc.setTransient((Boolean) processConf.get("inMem", null));
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ScriptableOutputStream out = null;
+        ScriptableOutputStream out;
         try {
             out = new ScriptableOutputStream(baos, sharedScope);
             out.writeObject(newScope);

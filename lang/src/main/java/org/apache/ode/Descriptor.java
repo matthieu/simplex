@@ -7,6 +7,7 @@ public class Descriptor {
 
     private String address;
     private boolean restful = true;
+    private boolean inmem = false;
 
     /**
      * @return address of the root RESTful resource that the process implements. 
@@ -37,5 +38,17 @@ public class Descriptor {
      */
     public void setRestful(boolean restful) {
         this.restful = restful;
+    }
+
+    /**
+     * True for in-memory processes. The execution of a transient process won't touch the database.
+     * @return
+     */
+    public boolean isTransient() {
+        return inmem;
+    }
+
+    public void setTransient(boolean t) {
+        inmem = t;
     }
 }

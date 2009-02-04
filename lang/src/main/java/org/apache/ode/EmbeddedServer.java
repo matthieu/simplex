@@ -50,6 +50,7 @@ public class EmbeddedServer {
     public void start(Options options) {
         this.options = options;
         _resources = new ServerLifecycle(options);
+        _resources.start();
     }
 
     public void stop() {

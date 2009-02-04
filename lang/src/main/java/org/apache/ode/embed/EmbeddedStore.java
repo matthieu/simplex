@@ -44,9 +44,10 @@ import java.util.*;
  */
 public class EmbeddedStore implements ProcessStore {
 
-    private HashMap<QName, OProcess> _processes = new HashMap<QName, OProcess>();
-    private SimPELCompiler _compiler = new SimPELCompiler();
+    protected SimPELCompiler _compiler = new SimPELCompiler();
     private ArrayList<ProcessStoreListener> _listeners = new ArrayList<ProcessStoreListener>();
+    protected HashMap<QName, ProcessModel> _processes = new HashMap<QName, ProcessModel>();
+    protected HashMap<QName, Descriptor> _descriptors = new HashMap<QName, Descriptor>();
 
     public Collection<QName> deploy(String processStr, Descriptor desc) {
         OProcess op = null;
@@ -56,7 +57,8 @@ public class EmbeddedStore implements ProcessStore {
             System.err.println("There were errors during the compilation of a SimPEL process:\n" + e.toString());
         }
         _processes.put(op.getQName(), op);
-        
+        _descriptors.put(op.getQName(), desc);
+
         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, op.getQName(), null));        
         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, op.getQName(), null));
         
@@ -74,7 +76,7 @@ public class EmbeddedStore implements ProcessStore {
     }
 
     public ProcessConf getProcessConfiguration(QName processId) {
-        return new EmbeddedProcessConf(_processes.get(processId));
+        return new EmbeddedProcessConf(_processes.get(processId), _descriptors.get(processId));
     }
 
     public void registerListener(ProcessStoreListener psl) {
@@ -84,7 +86,6 @@ public class EmbeddedStore implements ProcessStore {
     public void unregisterListener(ProcessStoreListener psl) {
         _listeners.remove(psl);
     }
-
 
     // boilerplate
 

@@ -20,9 +20,7 @@ import org.hsqldb.jdbc.jdbcDataSource;
 
 import javax.sql.DataSource;
 import javax.transaction.TransactionManager;
-import java.sql.Connection;
-import java.sql.Statement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -49,7 +47,9 @@ public class ServerLifecycle {
         _options = options;
         if (_options.getThreadPoolMaxSize() <= 0) _executorService = Executors.newCachedThreadPool();
         else _executorService = Executors.newFixedThreadPool(_options.getThreadPoolMaxSize());
+    }
 
+    public void start() {
         __log.debug("Initializing transaction manager");
         initTxMgr();
         __log.debug("Creating data source.");
@@ -59,7 +59,7 @@ public class ServerLifecycle {
         __log.debug("Initializing BPEL process store.");
         initProcessStore();
 
-        if (options.isRestful()) initRestfulServer();
+        if (_options.isRestful()) initRestfulServer();
 
         __log.debug("Initializing BPEL server.");
         initBpelServer();
@@ -134,14 +134,39 @@ public class ServerLifecycle {
         // TODO as long as we're using HSQL that's fine, afterward...
         Connection conn = null;
         Statement stmt = null;
+        ResultSet result = null;
         try {
             conn = _ds.getConnection();
-            stmt = conn.createStatement();
-            stmt.execute(SCHEDULER_DDL);
+            DatabaseMetaData metaData = conn.getMetaData();
+            if (metaData != null) {
+                result = metaData.getTables("APP", null, "ODE_JOB", null);
+
+                if (!result.next()) {
+                    String dbProductName = metaData.getDatabaseProductName();
+                    if (dbProductName.indexOf("Derby") > 0) {
+                        stmt = conn.createStatement();
+                        stmt.execute(DERBY_SCHEDULER_DDL1);
+                        stmt.close();
+                        stmt = conn.createStatement();
+                        stmt.execute(DERBY_SCHEDULER_DDL2);
+                        stmt.close();
+                        stmt = conn.createStatement();
+                        stmt.execute(DERBY_SCHEDULER_DDL3);
+                        stmt.close();
+                    }
+                    if (dbProductName.indexOf("hsql") > 0) {
+                        stmt = conn.createStatement();
+                        stmt.execute(HSQL_SCHEDULER_DDL);
+                    }
+                }
+            }
+
         } catch (SQLException e) {
-            throw new RuntimeException("Couldn't create the scheduler schema!", e);
+            // Swallowing it, either it already exists in which case we don't care or
+            // creation failed and we'll find out soon enough
         } finally {
             try {
+                if (result != null) result.close();
                 if (stmt != null) stmt.close();
                 if (conn != null) conn.close();
             } catch (SQLException se) {
@@ -186,7 +211,7 @@ public class ServerLifecycle {
         }
     }
 
-    private class ProcessStoreListenerImpl implements ProcessStoreListener {
+    public class ProcessStoreListenerImpl implements ProcessStoreListener {
         public void onProcessStoreEvent(ProcessStoreEvent event) {
             handleEvent(event);
         }
@@ -220,59 +245,28 @@ public class ServerLifecycle {
         return _server;
     }
 
-    private static final String SCHEDULER_DDL =
+    private static final String HSQL_SCHEDULER_DDL =
             "CREATE TABLE ODE_JOB (" +
-                    "  jobid CHAR(64) DEFAULT '' NOT NULL," +
-                    "  ts BIGINT DEFAULT 0 NOT NULL ," +
-                    "  nodeid char(64)  NULL," +
-                    "  scheduled int DEFAULT 0 NOT NULL," +
-                    "  transacted int DEFAULT 0 NOT NULL," +
-                    "  details LONGVARBINARY NULL," +
-                    "  PRIMARY KEY(jobid));" +
-                    "CREATE INDEX IDX_ODE_JOB_TS ON ODE_JOB (ts);" +
+                    " jobid CHAR(64) DEFAULT '' NOT NULL," +
+                    " ts BIGINT DEFAULT 0 NOT NULL ," +
+                    " nodeid char(64)  NULL," +
+                    " scheduled int DEFAULT 0 NOT NULL," +
+                    " transacted int DEFAULT 0 NOT NULL," +
+                    " details LONGVARBINARY NULL," +
+                    " PRIMARY KEY(jobid));\n" +
+                    "CREATE INDEX IDX_ODE_JOB_TS ON ODE_JOB (ts);\n" +
                     "CREATE INDEX IDX_ODE_JOB_NODEID ON ODE_JOB (nodeid);";
 
-    // TODO MEX interceptors
-//    private void registerMexInterceptors() {
-//        String listenersStr = _options.getMessageExchangeInterceptors();
-//        if (listenersStr != null) {
-//            for (StringTokenizer tokenizer = new StringTokenizer(listenersStr, ",;"); tokenizer.hasMoreTokens();) {
-//                String interceptorCN = tokenizer.nextToken();
-//                try {
-//                    _server.registerMessageExchangeInterceptor((MessageExchangeInterceptor) Class.forName(interceptorCN).newInstance());
-//                    __log.info(__msgs.msgMessageExchangeInterceptorRegistered(interceptorCN));
-//                } catch (Exception e) {
-//                    __log.warn("Couldn't register the event listener " + interceptorCN + ", the class couldn't be "
-//                            + "loaded properly: " + e);
-//                }
-//            }
-//        }
-//    }
-//
-      // TODO extension activities
-//    private void registerExtensionActivityBundles() {
-//        String extensionsStr = _options.getExtensionActivityBundles();
-//        if (extensionsStr != null) {
-//            Map<QName, ExtensionValidator> validators = new HashMap<QName, ExtensionValidator>();
-//            for (StringTokenizer tokenizer = new StringTokenizer(extensionsStr, ",;"); tokenizer.hasMoreTokens();) {
-//                String bundleCN = tokenizer.nextToken();
-//                try {
-//                    // instantiate bundle
-//                    AbstractExtensionBundle bundle = (AbstractExtensionBundle) Class.forName(bundleCN).newInstance();
-//
-//                    // register extension bundle (BPEL server)
-//                    _server.registerExtensionBundle(bundle);
-//
-//                    //add validators
-//                    validators.putAll(bundle.getExtensionValidators());
-//                } catch (Exception e) {
-//                    __log.warn("Couldn't register the extension bundle " + bundleCN + ", the class couldn't be " +
-//                            "loaded properly.");
-//                }
-//            }
-//            // register extension bundle (BPEL store)
-//            _store.setExtensionValidators(validators);
-//        }
-//    }
+    private static final String DERBY_SCHEDULER_DDL1 =
+            "CREATE TABLE ODE_JOB (" +
+                    " jobid CHAR(64) DEFAULT '' NOT NULL," +
+                    " ts BIGINT DEFAULT 0 NOT NULL ," +
+                    " nodeid char(64)," +
+                    " scheduled int DEFAULT 0 NOT NULL," +
+                    " transacted int DEFAULT 0 NOT NULL," +
+                    " details BLOB(50K)," +
+                    " PRIMARY KEY (jobid))";
+    private static final String DERBY_SCHEDULER_DDL2 = "CREATE INDEX IDX_ODE_JOB_TS ON ODE_JOB (ts)";
+    private static final String DERBY_SCHEDULER_DDL3 = "CREATE INDEX IDX_ODE_JOB_NODEID ON ODE_JOB (nodeid)";
 
 }
