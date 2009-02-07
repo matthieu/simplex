@@ -23,8 +23,8 @@ require "buildr/antlr"
 VERSION_NUMBER = "0.1-SNAPSHOT"
 NEXT_VERSION = "0.1"
 
-ANTLR               = "org.antlr:antlr:jar:3.0.1"
-ANTLR_TEMPLATE      = "org.antlr:stringtemplate:jar:3.0"
+ANTLR               = ["org.antlr:antlr:jar:3.0.1", "org.antlr:stringtemplate:jar:3.0"]
+ANTLR_RT            = "org.antlr:antlr-runtime:jar:3.0.1"
 ASM                 = "asm:asm:jar:3.1"
 COMMONS             = struct(
   :collections      =>"commons-collections:commons-collections:jar:3.1",
@@ -53,7 +53,7 @@ ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao",
                             "ode-utils", :under=>"org.apache.ode", :version=>"1.3-SNAPSHOT")
 OPENJPA             = ["org.apache.openjpa:openjpa:jar:1.1.0",
                        "net.sourceforge.serp:serp:jar:1.13.1"]
-TRANQL              = [ "tranql:tranql-connector:jar:1.1", "axion:axion:jar:1.0-M3-dev", COMMONS.primitives ]
+TRANQL              = ["tranql:tranql-connector:jar:1.1", COMMONS.primitives]
 WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"
 XERCES              = "xerces:xercesImpl:jar:2.8.1"
 
@@ -102,7 +102,7 @@ define "simpel" do
     compile.enhance([task('tweak_antlr')])
     compile.with HSQLDB, JAVAX.resource, JAVAX.transaction, COMMONS.lang, COMMONS.logging,
       ODE, LOG4J, WSDL4J, ASM, JERSEY, JAVAX.rest, JETTY, GERONIMO.transaction, XERCES,
-      ANTLR, ANTLR_TEMPLATE, local_libs
+      ANTLR, local_libs
     test.using :fork => :each
     test.exclude 'SingleshotTest'
     package :jar
@@ -113,7 +113,7 @@ define "simpel" do
       LOG4J, JAVAX.transaction
     test.with JAVAX.resource, COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, 
       DERBY, TRANQL, OPENJPA, GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence,
-      JAVAX.rest, JETTY, XERCES, ANTLR, ANTLR_TEMPLATE, local_libs, COMMONS.collections, 
+      JAVAX.rest, JETTY, XERCES, ANTLR, local_libs, COMMONS.collections, 
       local_libs
     package :jar
   end
@@ -125,11 +125,11 @@ define 'distro' do
   
   local_libs = file(_("etc/lib/e4x-grammar-0.2.jar")), file(_("etc/lib/rhino-1.7R2pre-patched.jar"))
 
-  package(:zip, 'apache-simplex').tap do |zip|
+  package(:zip, :id=>'apache-simplex').tap do |zip|
       zip.path('lib').include artifacts(ODE, LOG4J, JAVAX.transaction, JAVAX.resource,
         COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, DERBY, TRANQL, OPENJPA, 
         GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence, JAVAX.rest, JETTY, 
-        XERCES, ANTLR, ANTLR_TEMPLATE, local_libs, COMMONS.collections, local_libs)
+        XERCES, ANTLR_RT, local_libs, COMMONS.collections, local_libs)
 
       project('simpel').projects('lang', 'server').map(&:packages).flatten.each do |pkg|
         zip.include(pkg.to_s, :as=>"#{pkg.id}.#{pkg.type}", :path=>'lib')
