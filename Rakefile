@@ -20,8 +20,8 @@ require "buildr"
 require "buildr/antlr"
 
 # Keep this structure to allow the build system to update version numbers.
-VERSION_NUMBER = "1.2-SNAPSHOT"
-NEXT_VERSION = "1.2"
+VERSION_NUMBER = "0.1-SNAPSHOT"
+NEXT_VERSION = "0.1"
 
 ANTLR               = "org.antlr:antlr:jar:3.0.1"
 ANTLR_TEMPLATE      = "org.antlr:stringtemplate:jar:3.0"
@@ -71,7 +71,7 @@ define "simpel" do
   meta_inf << file("NOTICE")
 
   pkg_name = "org.apache.ode.simpel.antlr"
-  local_libs = file(_("lib/e4x-grammar-0.2.jar")), file(_("lib/rhino-1.7R2pre-patched.jar"))
+  local_libs = file(_("etc/lib/e4x-grammar-0.2.jar")), file(_("etc/lib/rhino-1.7R2pre-patched.jar"))
 
   define 'lang' do
     
@@ -118,4 +118,24 @@ define "simpel" do
     package :jar
   end
 
+end
+
+define 'distro' do
+  [:version, :group, :manifest, :meta_inf].each { |prop| send "#{prop}=", project("simpel").send(prop) }
+  
+  local_libs = file(_("etc/lib/e4x-grammar-0.2.jar")), file(_("etc/lib/rhino-1.7R2pre-patched.jar"))
+
+  package(:zip, 'apache-simplex').tap do |zip|
+      zip.path('lib').include artifacts(ODE, LOG4J, JAVAX.transaction, JAVAX.resource,
+        COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, DERBY, TRANQL, OPENJPA, 
+        GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence, JAVAX.rest, JETTY, 
+        XERCES, ANTLR, ANTLR_TEMPLATE, local_libs, COMMONS.collections, local_libs)
+
+      project('simpel').projects('lang', 'server').map(&:packages).flatten.each do |pkg|
+        zip.include(pkg.to_s, :as=>"#{pkg.id}.#{pkg.type}", :path=>'lib')
+      end
+
+      zip.path('bin').include _('etc/bin/run'), _('etc/bin/run.bat')
+      zip.path('log').include _('etc/log/log4j.properties')
+  end
 end
