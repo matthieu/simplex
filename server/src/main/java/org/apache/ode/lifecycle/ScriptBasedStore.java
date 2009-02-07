@@ -18,12 +18,18 @@ import java.util.List;
 public class ScriptBasedStore extends EmbeddedStore {
     private static final Logger __log = Logger.getLogger(ScriptBasedStore.class);
 
+    public static long POLLING_FREQ = 2000;
+
     private File _scriptsDir;
     private File _workDir;
 
     public ScriptBasedStore(File scriptsDir, File workDir) {
         _scriptsDir = scriptsDir;
         _workDir = workDir;
+    }
+
+    @Override
+    protected void start() {
         Thread poller = new Thread(new ScriptPoller());
         poller.setDaemon(true);
         poller.start();
@@ -72,6 +78,7 @@ public class ScriptBasedStore extends EmbeddedStore {
                     ArrayList<File> toRebuild = new ArrayList<File>(unknown);
                     toRebuild.addAll(newer);
                     for (File p : toRebuild) {
+                        __log.debug("Recompiling " + p);
                         ProcessModel oprocess = compileProcess(p);
                         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, oprocess.getQName(), null));
                         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, oprocess.getQName(), null));
@@ -85,44 +92,36 @@ public class ScriptBasedStore extends EmbeddedStore {
                     }
 
                     try {
-                        Thread.sleep(2000);
+                        Thread.sleep(POLLING_FREQ);
                     } catch (InterruptedException e) {
                         // whatever
                         e.printStackTrace();
                     }
                 } catch (Throwable t) {
-                    __log.info(t.toString() + "\nDeployment aborted.", t);
+                    if (t instanceof CompilationException)
+                        __log.info(t.getMessage() + "\nDeployment aborted.");
+                    else
+                        __log.error("Unexpected error during compilation.", t);
                 }
             }
         }
 
-        private ProcessModel compileProcess(File pfile) throws IOException {
+        private ProcessModel compileProcess(File pfile) throws IOException, CompilationException {
             File targetCbp = new File(_workDir, noExt(relativePath(_scriptsDir, pfile)) + ".cbp");
             targetCbp.getParentFile().mkdirs();
 
-            String thisLine;
-            StringBuffer scriptCnt = new StringBuffer();
-            BufferedReader r = new BufferedReader(new FileReader(pfile));
-            while ((thisLine = r.readLine()) != null) scriptCnt.append(thisLine).append("\n");
-            r.close();
+            FileOutputStream cbpFos = new FileOutputStream(targetCbp, false);
+            Descriptor desc = new Descriptor();
+            ProcessModel oprocess = _compiler.compileProcess(pfile, desc);
+            Serializer ser = new Serializer();
+            ser.writePModel(oprocess, cbpFos);
+            cbpFos.close();
 
-            ProcessModel oprocess;
-            try {
-                FileOutputStream cbpFos = new FileOutputStream(targetCbp, false);
-                Descriptor desc = new Descriptor();
-                oprocess = _compiler.compileProcess(scriptCnt.toString(), desc);
-                Serializer ser = new Serializer();
-                ser.writePModel(oprocess, cbpFos);
-                cbpFos.close();
+            _processes.put(oprocess.getQName(), oprocess);
+            _descriptors.put(oprocess.getQName(), desc);
 
-                _processes.put(oprocess.getQName(), oprocess);
-                _descriptors.put(oprocess.getQName(), desc);
-
-                fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, oprocess.getQName(), null));
-                fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, oprocess.getQName(), null));
-            } catch (CompilationException e) {
-                throw new RuntimeException("There were errors during the compilation of a SimPEL process:\n" + e.toString());
-            }
+            fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, oprocess.getQName(), null));
+            fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, oprocess.getQName(), null));
 
             return oprocess;
         }

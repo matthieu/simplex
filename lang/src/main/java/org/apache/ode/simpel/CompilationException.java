@@ -26,7 +26,7 @@ public class CompilationException extends RuntimeException {
 
     public CompilationException(List<Error> errors) {
         super();
-        StringBuffer msg = new StringBuffer("Errors during process compilation:\n");
+        StringBuffer msg = new StringBuffer();
         for (Error error : errors)
             msg.append(error.line).append(":").append(error.column).append(" ").append(error.message).append("\n");
         this.compilationMessages = msg.toString();

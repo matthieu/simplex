@@ -35,7 +35,7 @@ public class GeronimoTxFactory {
         }
 
         public TransactionManager getTransactionManager() {
-            __log.info("Using embedded Geronimo transaction manager");
+            __log.debug("Using embedded Geronimo transaction manager");
             try {
                 Object obj = new org.apache.geronimo.transaction.manager.GeronimoTransactionManager();
                 return (TransactionManager) obj;

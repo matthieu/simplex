@@ -68,10 +68,13 @@ public class ServerLifecycle {
         registerEventListeners();
 
         _server.start();
+        _store.start();
+        __log.info("Up and ready to serve.");
     }
 
     public void clean() {
         EngineWebResource.stopRestfulServer();
+        _db.shutdown();
         _server = null;
         _txMgr = null;
         _executorService = null;
