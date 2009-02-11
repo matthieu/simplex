@@ -57,7 +57,7 @@ public class SimPELCompiler {
     }
 
     public OProcess compileProcess(String processDoc, Descriptor desc) {
-        return compileProcess(new File("."), processDoc, desc);
+        return compileProcess(new File(".").getAbsoluteFile(), processDoc, desc);
     }
 
     public OProcess compileProcess(File f, String processDoc, Descriptor desc) {
@@ -90,9 +90,9 @@ public class SimPELCompiler {
         newScope.setParentScope(null);
 
         // Setting some globals part of the environment in which processes execute
-        cx.evaluateString(newScope, MessageFormat.format(GLOBALS, f.getParentFile().getAbsolutePath()), "<cmd>", 1, null);
+        cx.evaluateString(newScope, MessageFormat.format(GLOBALS, f == null ? "." : f.getParentFile().getAbsolutePath()), "<cmd>", 1, null);
         try {
-            cx.evaluateString(newScope, header, f.getAbsolutePath(), 1, null);
+            cx.evaluateString(newScope, header, f == null ? "." : f.getAbsolutePath(), 1, null);
         } catch (Exception e) {
             fatalCompilationError("Error when interpreting definitions in the process header: " + e.toString());
         }
