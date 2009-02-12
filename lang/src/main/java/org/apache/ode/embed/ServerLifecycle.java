@@ -75,11 +75,11 @@ public class ServerLifecycle {
     public void clean() {
         EngineWebResource.stopRestfulServer();
         if (_db != null) _db.shutdown();
+        _db = null;
         _server = null;
         _txMgr = null;
         _executorService = null;
         _store = null;
-        _db = null;
         _ds = null;
         _scheduler = null;
         _scheduler = null;
