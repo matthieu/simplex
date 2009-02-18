@@ -37,6 +37,7 @@ public class ScriptBasedStore extends EmbeddedStore {
 
     private File _scriptsDir;
     private File _workDir;
+    private ScriptPoller _poller;
 
     public ScriptBasedStore(File scriptsDir, File workDir) {
         _scriptsDir = scriptsDir;
@@ -45,12 +46,19 @@ public class ScriptBasedStore extends EmbeddedStore {
 
     @Override
     protected void start() {
-        Thread poller = new Thread(new ScriptPoller());
+        _poller = new ScriptPoller();
+        Thread poller = new Thread(_poller);
         poller.setDaemon(true);
         poller.start();
     }
 
+    protected void stop() {
+        _poller.stop();
+    }
+
     private class ScriptPoller implements Runnable {
+        private boolean run = true;
+
         private final FileFilter _scriptsFilter = new FileFilter() {
             public boolean accept(File path) {
                 return path.getName().endsWith(".simpel") && path.isFile();
@@ -63,7 +71,7 @@ public class ScriptBasedStore extends EmbeddedStore {
         };
 
         public void run() {
-            while (true) {
+            while (run) {
                 try {
                     List<File> scripts = listFilesRecursively(_scriptsDir, _scriptsFilter);
                     List<File> cbps = listFilesRecursively(_workDir, _cbpFilter);
@@ -119,6 +127,11 @@ public class ScriptBasedStore extends EmbeddedStore {
                         __log.error("Unexpected error during compilation.", t);
                 }
             }
+
+        }
+
+        private void stop() {
+            run = false;
         }
 
         private ProcessModel compileProcess(File pfile) throws IOException, CompilationException {

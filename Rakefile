@@ -23,8 +23,7 @@ require "buildr/antlr"
 VERSION_NUMBER = "0.1-SNAPSHOT"
 NEXT_VERSION = "0.1"
 
-ANTLR               = ["org.antlr:antlr:jar:3.0.1", "org.antlr:stringtemplate:jar:3.0"]
-ANTLR_RT            = "org.antlr:antlr-runtime:jar:3.0.1"
+ANTLR_RT            = "org.antlr:antlr-runtime:jar:3.1.1"
 ASM                 = "asm:asm:jar:3.1"
 COMMONS             = struct(
   :collections      =>"commons-collections:commons-collections:jar:3.1",
@@ -78,7 +77,7 @@ define "simplex" do
 
   test.with COMMONS.lang, COMMONS.logging, LOG4J, ASM, DERBY, ODE,
     TRANQL, OPENJPA, GERONIMO.connector, JAVAX.persistence,
-    XERCES, ANTLR, local_libs, COMMONS.collections
+    XERCES, ANTLR_RT, local_libs, COMMONS.collections
   package :jar
 
 end

@@ -62,6 +62,10 @@ public class EmbeddedStore implements ProcessStore {
         // Nothing special to do
     }
 
+    protected void stop() {
+        // Nothing special to do
+    }
+
     protected void fireEvent(ProcessStoreEvent pse) {
         for (ProcessStoreListener psl : _listeners) psl.onProcessStoreEvent(pse);
     }

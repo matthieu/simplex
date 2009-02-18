@@ -91,6 +91,7 @@ public class ServerLifecycle {
     }
 
     public void clean() {
+        _store.stop();
         EngineWebResource.stopRestfulServer();
         if (_db != null) _db.shutdown();
         _db = null;

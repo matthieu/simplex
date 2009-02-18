@@ -19,6 +19,7 @@
 package com.intalio.simplex.embed.messaging;
 
 import com.intalio.simplex.embed.MessageSender;
+import com.intalio.simplex.http.datam.FEJOML;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -50,62 +51,6 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         _sender  = sender;
     }
 
-    public void invokePartnerUnreliable(PartnerRoleMessageExchange partnerMex) throws ContextException {
-        if (_sender == null) {
-            partnerMex.replyWithFailure(MessageExchange.FailureType.ABORTED,
-                    "No sender configured, can't send the message.", partnerMex.getRequest().getMessage());
-            __log.warn("No sender configured, can't send the message:\n"
-                    + DOMUtils.domToString(partnerMex.getRequest().getMessage()));
-        }
-
-        Operation invokedOp = partnerMex.getPortType().getOperation(partnerMex.getOperationName(), null, null);
-        try {
-            // We're placing ourselves in the doc/lit case for now, assuming a single part with a single root element
-            Node response = _sender.send(partnerMex.getPortType().getQName().getLocalPart(),
-                    invokedOp.getName(), unwrapToPayload(partnerMex.getRequest().getMessage()));
-
-            if (invokedOp.getOutput() != null) {
-                Document responseDoc = DOMUtils.newDocument();
-                Element messageElmt = responseDoc.createElement("message");
-                responseDoc.appendChild(messageElmt);
-                // Pretty hard to get the part name huh?
-                String partName = (String) invokedOp.getOutput().getMessage().getParts().keySet().iterator().next();
-                Element partElmt = responseDoc.createElement(partName);
-                messageElmt.appendChild(partElmt);
-                // TODO same thing, simpel only wrapping
-                QName elmtName = ((Part)invokedOp.getOutput().getMessage().getParts().values().iterator().next()).getElementName();
-                Element partRootElmt = responseDoc.createElementNS(elmtName.getNamespaceURI(), elmtName.getLocalPart());
-                partElmt.appendChild(partRootElmt);
-                if (response != null) partRootElmt.appendChild(responseDoc.importNode(response, true));
-
-                Message responseMsg = partnerMex.createMessage(invokedOp.getOutput().getMessage().getQName());
-                responseMsg.setMessage(messageElmt);
-                partnerMex.reply(responseMsg);
-            } else {
-                partnerMex.replyOneWayOk();
-            }
-        } catch (RuntimeException re) {
-            __log.warn("The service called threw a runtime exception:\n"
-                    + DOMUtils.domToString(partnerMex.getRequest().getMessage()), re);
-            // Runtimes are considered failures
-            partnerMex.replyWithFailure(MessageExchange.FailureType.COMMUNICATION_ERROR,
-                    "The service called threw a runtime exception: " + re.toString(),
-                    partnerMex.getRequest().getMessage());
-        } catch (Exception e) {
-            __log.warn("The service called threw a checked exception:\n"
-                    + DOMUtils.domToString(partnerMex.getRequest().getMessage()), e);
-            // checked exceptions are considered faults
-            Fault fault = invokedOp.getFault(e.getClass().getName());
-            Message faultMsg = partnerMex.createMessage(fault.getMessage().getQName());
-            Document faultDoc = DOMUtils.newDocument();
-            Element faultElmt = faultDoc.createElement("exception");
-            faultElmt.setTextContent(e.getMessage());
-            faultMsg.setMessage(faultElmt);
-            partnerMex.replyWithFault(new QName(
-                    partnerMex.getPortType().getQName().getNamespaceURI(), fault.getName()), faultMsg);
-        }
-    }
-
     public void invokePartnerReliable(PartnerRoleMessageExchange partnerRoleMessageExchange) throws ContextException {
         //To change body of implemented methods use File | Settings | File Templates.
     }
@@ -121,12 +66,14 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         Client c = Client.create(cc);
 
         ClientResponse resp;
-        WebResource.Builder wr = c.resource(res.getUrl()).path("/").accept(res.getContentType()).type(res.getContentType());
+        WebResource wr = c.resource(res.getUrl()).path("/");
         if (restOutMessageExchange.getRequest() != null) {
             Element payload = restOutMessageExchange.getRequest().getMessage();
-            handleOutHeaders(payload, wr);
-            resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class,
-                    DOMUtils.domToString(unwrapToPayload(payload)));
+            String cntType = contentType(payload);
+            WebResource.Builder wrb = wr.type(cntType);
+            handleOutHeaders(payload, wrb);
+            resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class,
+                    FEJOML.fromXML(unwrapToPayload(payload), cntType));
         } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
 
         if (resp.getStatus() == 204) {
@@ -147,11 +94,14 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             return;
         }
 
-        // TODO allow POST over simple form url-encoded
+
+        String responseCntType = FEJOML.XML;
+        if (FEJOML.recognizeType(resp.getType().getType())) responseCntType = resp.getType().getType();
+
         Element responseXML = null;
         if (response != null && response.trim().length() > 0) {
             try {
-                responseXML = DOMUtils.stringToDOM(response);
+                responseXML = FEJOML.toXML(response, responseCntType);
             } catch (Exception e) {
                 fail(res.getUrl(), "parseError", "Response couldn't be parsed: " + response, restOutMessageExchange);
                 return;
@@ -229,6 +179,15 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         mex.replyWithFault(faultName, responseMsg);
     }
 
+    private String contentType(Element req) {
+        Element ce = DOMUtils.findChildByName(req, new QName(null, "ContentEncoding"));
+        if (ce != null) {
+            String ces = ce.getTextContent();
+            if (FEJOML.recognizeType(ces)) return ces;
+        }
+        return FEJOML.XML;
+    }
+
     private void fail(String calledUrl, String errElmt, String text, RESTOutMessageExchange mex) {
         Document doc = DOMUtils.newDocument();
         Element failureElmt = doc.createElement(errElmt);
@@ -240,7 +199,7 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
 
     private void handleOutHeaders(Element msg, WebResource.Builder wr) {
         Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(msg));
-        Node headers = DOMUtils.findChildByName(root, new QName(null, "headers"));
+        Element headers = withHeaders(root);
         if (headers != null) {
             NodeList headerElmts = headers.getChildNodes();
             for (int m = 0; m < headerElmts.getLength(); m++) {
@@ -295,5 +254,61 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             return 0;
         }
     }
-    
+
+    public void invokePartnerUnreliable(PartnerRoleMessageExchange partnerMex) throws ContextException {
+        if (_sender == null) {
+            partnerMex.replyWithFailure(MessageExchange.FailureType.ABORTED,
+                    "No sender configured, can't send the message.", partnerMex.getRequest().getMessage());
+            __log.warn("No sender configured, can't send the message:\n"
+                    + DOMUtils.domToString(partnerMex.getRequest().getMessage()));
+        }
+
+        Operation invokedOp = partnerMex.getPortType().getOperation(partnerMex.getOperationName(), null, null);
+        try {
+            // We're placing ourselves in the doc/lit case for now, assuming a single part with a single root element
+            Node response = _sender.send(partnerMex.getPortType().getQName().getLocalPart(),
+                    invokedOp.getName(), unwrapToPayload(partnerMex.getRequest().getMessage()));
+
+            if (invokedOp.getOutput() != null) {
+                Document responseDoc = DOMUtils.newDocument();
+                Element messageElmt = responseDoc.createElement("message");
+                responseDoc.appendChild(messageElmt);
+                // Pretty hard to get the part name huh?
+                String partName = (String) invokedOp.getOutput().getMessage().getParts().keySet().iterator().next();
+                Element partElmt = responseDoc.createElement(partName);
+                messageElmt.appendChild(partElmt);
+                // TODO same thing, simpel only wrapping
+                QName elmtName = ((Part)invokedOp.getOutput().getMessage().getParts().values().iterator().next()).getElementName();
+                Element partRootElmt = responseDoc.createElementNS(elmtName.getNamespaceURI(), elmtName.getLocalPart());
+                partElmt.appendChild(partRootElmt);
+                if (response != null) partRootElmt.appendChild(responseDoc.importNode(response, true));
+
+                Message responseMsg = partnerMex.createMessage(invokedOp.getOutput().getMessage().getQName());
+                responseMsg.setMessage(messageElmt);
+                partnerMex.reply(responseMsg);
+            } else {
+                partnerMex.replyOneWayOk();
+            }
+        } catch (RuntimeException re) {
+            __log.warn("The service called threw a runtime exception:\n"
+                    + DOMUtils.domToString(partnerMex.getRequest().getMessage()), re);
+            // Runtimes are considered failures
+            partnerMex.replyWithFailure(MessageExchange.FailureType.COMMUNICATION_ERROR,
+                    "The service called threw a runtime exception: " + re.toString(),
+                    partnerMex.getRequest().getMessage());
+        } catch (Exception e) {
+            __log.warn("The service called threw a checked exception:\n"
+                    + DOMUtils.domToString(partnerMex.getRequest().getMessage()), e);
+            // checked exceptions are considered faults
+            Fault fault = invokedOp.getFault(e.getClass().getName());
+            Message faultMsg = partnerMex.createMessage(fault.getMessage().getQName());
+            Document faultDoc = DOMUtils.newDocument();
+            Element faultElmt = faultDoc.createElement("exception");
+            faultElmt.setTextContent(e.getMessage());
+            faultMsg.setMessage(faultElmt);
+            partnerMex.replyWithFault(new QName(
+                    partnerMex.getPortType().getQName().getNamespaceURI(), fault.getName()), faultMsg);
+        }
+    }
+
 }

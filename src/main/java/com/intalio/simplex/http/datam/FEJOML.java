@@ -19,14 +19,14 @@
 package com.intalio.simplex.http.datam;
 
 import org.apache.ode.utils.DOMUtils;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
+import org.xml.sax.SAXException;
 
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.Map;
+import java.io.IOException;
 
 /**
  * This ugly name stands for Form Encoded - JSON - X(HT)ML in case you were wondering, which are all
@@ -36,10 +36,17 @@ import java.util.Map;
  */
 public class FEJOML {
 
-    public static final String JSON = "application/json";
-    public static final String XML = "application/xml";
-    public static final String XHTML = "application/xhtml+xml";
-    public static final String FUE = "application/x-www-form-urlencoded";
+    public static final String JSON = MediaType.APPLICATION_JSON;
+    public static final String XML = MediaType.APPLICATION_XML;
+    public static final String XHTML = MediaType.APPLICATION_XHTML_XML;
+    public static final String FUE = MediaType.APPLICATION_FORM_URLENCODED;
+    public static final String PLAIN = "text/plain";
+
+    public static boolean recognizeType(String cntType) {
+        if (cntType.equals(JSON) || cntType.equals(FUE) || cntType.equals(XHTML) || cntType.equals(XML) || cntType.equals(XML))
+           return true;
+        else return false;
+    }
 
     public static String convert(String in, String from, String to) {
         throw new UnsupportedOperationException("not yet");
@@ -73,6 +80,12 @@ public class FEJOML {
         else throw new UnsupportedOperationException("Not yet");
     }
 
+    public static Element toXML(String in, String from) throws IOException, SAXException {
+        if (from.equals(XML)) return DOMUtils.stringToDOM(in);
+        else if (from.equals(PLAIN)) return plainToXML(in);
+        else throw new UnsupportedOperationException("not yet");
+    }
+
     private static String xmlToHtml(Node in) {
         StringBuffer html = new StringBuffer();
         html.append("<html>\n    <body>\n");
@@ -91,6 +104,45 @@ public class FEJOML {
         }
         html.append("    </body>\n</html>");
         return html.toString();
+    }
+
+    /**
+     * The conversion ignores the first element, considering it as a simple hash wrapper. Then it
+     * handles each sub-element using a Rails-style conversion like foo[bar]=baz
+     */
+    private static String xmlToForm(Node in) {
+        Element root = null;
+        if (in.getNodeType() == Node.TEXT_NODE) return ((Text)in).getWholeText() + "=";
+        else if (in.getNodeType() == Node.DOCUMENT_NODE) root = ((Document)in).getDocumentElement();
+        else if (in.getNodeType() != Node.ELEMENT_NODE)
+            throw new RuntimeException("Don't know how to convert node type " + in.getNodeType() + ": " + in);
+
+        if (root == null) root = (Element) in;
+
+        StringBuffer res = new StringBuffer();
+        NodeList firstChildren = root.getChildNodes();
+        for (int m = 0; m < firstChildren.getLength(); m++) {
+            Node c = firstChildren.item(m);
+            if (c.getNodeType() == Node.ELEMENT_NODE) {
+                Element child = (Element) c;
+                // TODO escape characters
+                if (DOMUtils.getFirstChildElement(child) == null) {
+                    if (res.length() > 0) res.append("&");
+                    res.append(child.getNodeName()).append("=").append(child.getTextContent());
+                } else {
+                    throw new UnsupportedOperationException("Only know how to handle simple text elements for now.");
+                }
+            }
+        }
+        return res.toString();
+    }
+
+    private static Element plainToXML(String cnt) {
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElement("wrapper");
+        wrapper.setTextContent(cnt);
+        doc.appendChild(wrapper);
+        return wrapper;
     }
 
     private static String pluralize(String s) {
