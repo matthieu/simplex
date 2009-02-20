@@ -149,15 +149,15 @@ public class ProcessWebResource {
     }
 
     @POST
-    @Consumes("application/x-www-form-urlencoded") @Produces("text/html")
+    @Consumes("application/x-www-form-urlencoded") @Produces("application/xml")
     public Response postEnc(MultivaluedMap<String, String> formParams) {
-        return post(FEJOML.formToXML(formParams), FEJOML.FUE);
+        return post(FEJOML.formToXML(formParams), FEJOML.XML);
     }
 
     @POST @Path("{sub : .*}")
-    @Consumes("application/x-www-form-urlencoded") @Produces("text/html")
+    @Consumes("application/x-www-form-urlencoded") @Produces("application/xml")
     public Response postSubEnc(MultivaluedMap<String, String> formParams) {
-        return post(FEJOML.formToXML(formParams), FEJOML.FUE);
+        return post(FEJOML.formToXML(formParams), FEJOML.XML);
     }
 
 
