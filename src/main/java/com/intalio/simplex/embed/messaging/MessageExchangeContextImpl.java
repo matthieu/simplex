@@ -61,23 +61,33 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
 
     public void invokeRestful(RESTOutMessageExchange restOutMessageExchange) throws ContextException {
         Resource res = restOutMessageExchange.getTargetResource();
+        invokeRestful(restOutMessageExchange, res);
+    }
 
+    private void invokeRestful(RESTOutMessageExchange restOutMessageExchange, Resource res) throws ContextException {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
+        c.setFollowRedirects(false); // Handling redirects ourselves, Jersey doesn't set the new location properly 
 
         ClientResponse resp;
-        WebResource wr = c.resource(res.getUrl()).path("/");
+        WebResource wr = c.resource(res.getUrl());
         if (restOutMessageExchange.getRequest() != null) {
             Element payload = restOutMessageExchange.getRequest().getMessage();
             String cntType = contentType(payload);
             WebResource.Builder wrb = wr.type(cntType);
             handleOutHeaders(payload, wrb);
-            resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class,
-                    FEJOML.fromXML(unwrapToPayload(payload), cntType));
+            String cnt = FEJOML.fromXML(unwrapToPayload(payload), cntType);
+            resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class, cnt);
         } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
 
         if (resp.getStatus() == 204) {
             restOutMessageExchange.replyOneWayOk();
+            return;
+        }
+
+        if (resp.getStatus() == 302) {
+            Resource newTarget = new Resource(resp.getMetadata().getFirst("Location"), res.getContentType(), res.getMethod());
+            invokeRestful(restOutMessageExchange, newTarget);
             return;
         }
 
@@ -94,7 +104,6 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             return;
         }
 
-
         String responseCntType = FEJOML.XML;
         if (FEJOML.recognizeType(resp.getType().getType())) responseCntType = resp.getType().getType();
 
@@ -108,7 +117,7 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             }
         }
 
-        // Prepare the message
+        // Prepare the response message
         Document odeMsg = DOMUtils.newDocument();
         Element odeMsgEl = odeMsg.createElementNS(null, "message");
         odeMsg.appendChild(odeMsgEl);
@@ -120,7 +129,7 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             methodElmt.appendChild(odeMsg.adoptNode(responseXML));
 
         // Copy headers
-        if (resp.getStatus() == 201) {
+        if (resp.getStatus() == 201 || resp.getStatus() == 302) {
             Element loc = odeMsg.createElement("Location");
             loc.setTextContent(resp.getMetadata().getFirst("Location"));
             withHeaders(methodElmt).appendChild(loc);
@@ -180,7 +189,8 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
     }
 
     private String contentType(Element req) {
-        Element ce = DOMUtils.findChildByName(req, new QName(null, "ContentEncoding"));
+        Element root = DOMUtils.getFirstChildElement(DOMUtils.getFirstChildElement(req));
+        Element ce = DOMUtils.findChildByName(withHeaders(root), new QName(null, "Content_Type"));
         if (ce != null) {
             String ces = ce.getTextContent();
             if (FEJOML.recognizeType(ces)) return ces;
@@ -219,6 +229,8 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
                                 throw new RuntimeException(e);
                             }
                         }
+                    } else if (!n.getNodeName().equals("Content_Type")) {
+                        wr.header(n.getNodeName().replaceAll("_", "-"), n.getTextContent());
                     }
                 }
             }
