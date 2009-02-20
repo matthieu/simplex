@@ -23,6 +23,7 @@ import com.intalio.simplex.http.datam.FEJOML;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.filter.LoggingFilter;
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 import org.apache.log4j.Logger;
@@ -38,12 +39,16 @@ import javax.wsdl.Operation;
 import javax.wsdl.Part;
 import javax.xml.namespace.QName;
 import java.io.UnsupportedEncodingException;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
 public class MessageExchangeContextImpl implements MessageExchangeContext {
 
     private static final Logger __log = Logger.getLogger(MessageExchangeContextImpl.class);
+    private static final Logger __logHttp = Logger.getLogger("com.intalio.simplex.http");
 
     MessageSender _sender;
 
@@ -67,7 +72,8 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
     private void invokeRestful(RESTOutMessageExchange restOutMessageExchange, Resource res) throws ContextException {
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
-        c.setFollowRedirects(false); // Handling redirects ourselves, Jersey doesn't set the new location properly 
+        c.setFollowRedirects(false); // Handling redirects ourselves, Jersey doesn't set the new location properly
+        if (__logHttp.isDebugEnabled()) c.addFilter(new LoggingFilter());
 
         ClientResponse resp;
         WebResource wr = c.resource(res.getUrl());
