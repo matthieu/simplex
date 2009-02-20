@@ -43,7 +43,9 @@ public class FEJOML {
     public static final String PLAIN = "text/plain";
 
     public static boolean recognizeType(String cntType) {
-        if (cntType.equals(JSON) || cntType.equals(FUE) || cntType.equals(XHTML) || cntType.equals(XML) || cntType.equals(XML))
+        if (cntType.equals(JSON) || cntType.equals(FUE) || cntType.equals(XHTML)
+                || cntType.equals(XML) || cntType.equals(MediaType.APPLICATION_ATOM_XML)
+                || cntType.equals(PLAIN) || cntType.indexOf("text") >= 0)
            return true;
         else return false;
     }
@@ -75,14 +77,14 @@ public class FEJOML {
     }
 
     public static String fromXML(Node in, String to) {
-        if (to.equals(XML)) return DOMUtils.domToString(in);
-        else if (to.equals(FUE)) return xmlToHtml(in);
+        if (to.equals(XML) || to.equals(MediaType.APPLICATION_ATOM_XML)) return DOMUtils.domToString(in);
+        else if (to.equals(FUE)) return xmlToForm(in);
         else throw new UnsupportedOperationException("Not yet");
     }
 
     public static Element toXML(String in, String from) throws IOException, SAXException {
         if (from.equals(XML)) return DOMUtils.stringToDOM(in);
-        else if (from.equals(PLAIN)) return plainToXML(in);
+        else if (from.indexOf("text") >= 0) return plainToXML(in);
         else throw new UnsupportedOperationException("not yet");
     }
 

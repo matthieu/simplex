@@ -45,7 +45,8 @@ public class EmbeddedStore implements ProcessStore {
         try {
             op = _compiler.compileProcess(processStr, desc);
         } catch (CompilationException e) {
-            System.err.println("There were errors during the compilation of a SimPEL process:\n" + e.toString());
+            System.err.println("There were errors during the compilation of a SimPEL process:\n" + e.getMessage());
+            return null;
         }
         _processes.put(op.getQName(), op);
         _descriptors.put(op.getQName(), desc);

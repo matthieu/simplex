@@ -26,7 +26,9 @@ import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.ClientResponse;
+import org.junit.Ignore;
 
+@Ignore
 public class GoogleCalendarTest extends TestCase {
 
     EmbeddedServer server;
@@ -44,30 +46,63 @@ public class GoogleCalendarTest extends TestCase {
     }
 
     private static final String CREATE_ENTRY =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/calentry\";\n" +
             "googleLoginUrl = \"https://www.google.com/accounts/ClientLogin\"; \n" +
+            "googleCalUrl = \"http://www.google.com/calendar/feeds/default/private/full\"; \n" +
+
+            "function extractToken(resp) { \n" +
+            "  return resp.split(\"=\")[3]; \n" +
+            "} \n" +
+            "function extractSessionId(url) { \n" +
+            "  return url.split(\"gsessionid=\")[1]; \n" +
+            "} \n" +
+
+            "function createCalEntry() { \n" +
+            "  return <entry xmlns='http://www.w3.org/2005/Atom'\n" +
+                    "    xmlns:gd='http://schemas.google.com/g/2005'>\n" +
+                    "  <category scheme='http://schemas.google.com/g/2005#kind'\n" +
+                    "    term='http://schemas.google.com/g/2005#event'></category>\n" +
+                    "  <title type='text'>Review stuff</title>\n" +
+                    "  <content type='text'>See how well you can do your stuff.</content>\n" +
+                    "  <gd:transparency\n" +
+                    "    value='http://schemas.google.com/g/2005#event.opaque'>\n" +
+                    "  </gd:transparency>\n" +
+                    "  <gd:eventStatus\n" +
+                    "    value='http://schemas.google.com/g/2005#event.confirmed'>\n" +
+                    "  </gd:eventStatus>\n" +
+                    "  <gd:where valueString='Your Office'></gd:where>\n" +
+                    "  <gd:when startTime='2009-03-17T15:00:00.000Z'\n" +
+                    "    endTime='2009-03-17T17:00:00.000Z'></gd:when>\n" +
+                    "</entry>; \n" +
+            "} \n" +
+
             "process CalendarEntry { \n" +
             "   receive(self) { |entry| \n" +
             "     creds = <creds><source>intalio-simpeltest-0.1</source><service>cl</service></creds>;\n" +
-            "     creds.Email = entry.email;\n" +
-            "     creds.Passwd = entry.password;\n" +
-            "     creds.header.ContentEncoding = \"application/x-www-form-urlencoded\"; \n" +
+            "     creds.Email = <Email>{entry.email.text()}</Email>;\n" +
+            "     creds.Passwd = <Passwd>{entry.password.text()}</Passwd>;\n" +
+            "     creds.headers.Content_Type = \"application/x-www-form-urlencoded\"; \n" +
 
-            "     tokenResp = request(\"post\", googleLoginUrl);\n" +
-            "     if (tokenResp.header.status == 403) {\n" +
+            "     tokenResp = request(googleLoginUrl, \"post\", creds);\n" +
+            "     if (tokenResp.header.Status == 403) {\n" +
             "         error = <loginError>403</loginError>;\n" +
             "         reply(error);\n" +
             "     } else {\n" +
-            "         token = tokenResp.Auth;\n" +
-            "         reply(token);\n" +
+            "         token = extractToken(tokenResp);\n" +
+            "         entryReq = createCalEntry();\n" +
+            "         entryReq.headers.Authorization = \"GoogleLogin auth=\" + token;\n" +
+            "         entryReq.headers.GData_Version = 2;\n" +
+            "         entryReq.headers.Content_Type = \"application/atom+xml\"; \n" +
+            "         entryResp = request(googleCalUrl, \"post\", entryReq);\n" +
+            "         reply(entryResp);\n" +
             "     }" +
             "   }\n" +
             "}";
 
     public void testCreateEntry() throws Exception {
         server.start();
-        Descriptor desc = new Descriptor();
-        desc.setAddress("/calentry");
-        server.deploy(CREATE_ENTRY, desc);
+        if (server.deploy(CREATE_ENTRY) == null) fail("Deployment error.");
 
         ClientConfig cc = new DefaultClientConfig();
         Client c = Client.create(cc);
@@ -78,7 +113,7 @@ public class GoogleCalendarTest extends TestCase {
                         "<task><title>SimPEL Task</title>" +
                         "<description>Test task created from a SimPEL process.</description>" +
                         "<email>simpeltests@gmail.com</email>" +
-                        "<password>!sekr33t</password>");
+                        "<password>!sekr33t</password></task>");
         String response = resp.getEntity(String.class);
         System.out.println(response);
     }
