@@ -80,24 +80,25 @@ define "simplex" do
     XERCES, ANTLR_RT, local_libs, COMMONS.collections
   package :jar
 
-end
+  package(:zip, :id=>'intalio-simplex').path("intalio-#{id}-#{version}").tap do |zip|
+    zip.path('lib').include artifacts(SIMPEL, ODE, LOG4J, JAVAX.transaction, JAVAX.resource,
+      COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, DERBY, TRANQL, OPENJPA, 
+      GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence, JAVAX.rest, JETTY, 
+      XERCES, ANTLR_RT, local_libs, COMMONS.collections, local_libs)
 
-define 'distro' do
-  [:version, :group, :manifest, :meta_inf].each { |prop| send "#{prop}=", project("simplex").send(prop) }
-  
-  local_libs = file(_("lib/e4x-grammar-0.2.jar")), file(_("lib/rhino-1.7R2pre-patched.jar"))
-
-  package(:zip, :id=>'intalio-simplex').tap do |zip|
-      zip.path('lib').include artifacts(SIMPEL, ODE, LOG4J, JAVAX.transaction, JAVAX.resource,
-        COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, DERBY, TRANQL, OPENJPA, 
-        GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence, JAVAX.rest, JETTY, 
-        XERCES, ANTLR_RT, local_libs, COMMONS.collections, local_libs)
-
-      project('simplex').packages.each do |pkg|
-        zip.include(pkg.to_s, :as=>"#{pkg.id}.#{pkg.type}", :path=>'lib')
+    packages.each do |pkg|
+      unless pkg.id =~ /intalio-simplex/
+        zip.include(pkg.to_s, :path=>'lib')
       end
+    end
 
-      zip.path('bin').include _('src/main/bin/run'), _('src/main/bin/run.bat')
-      zip.path('log').include _('src/main/etc/log4j.properties')
+    zip.path('bin').include _('src/main/bin/run'), _('src/main/bin/run.bat')
+    zip.path('log').include _('src/main/etc/log4j.properties')
   end
 end
+
+# define 'distro' do
+# [:version, :group, :manifest, :meta_inf].each { |prop| send "#{prop}=", project("simplex").send(prop) }
+# 
+# local_libs = file(_("lib/e4x-grammar-0.2.jar")), file(_("lib/rhino-1.7R2pre-patched.jar"))
+# end

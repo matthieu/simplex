@@ -120,9 +120,10 @@ public class ScriptBasedStore extends EmbeddedStore {
                         // whatever
                         e.printStackTrace();
                     }
+                    __log.info("Deployment successful.\n");
                 } catch (Throwable t) {
                     if (t instanceof CompilationException)
-                        __log.info(t.getMessage() + "\nDeployment aborted.");
+                        __log.info(t.getMessage() + "Deployment aborted.\n");
                     else
                         __log.error("Unexpected error during compilation.", t);
                 }
