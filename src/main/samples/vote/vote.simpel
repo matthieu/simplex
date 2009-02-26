@@ -1,0 +1,49 @@
+processConfig.inMem = true;
+processConfig.address = "/api/vote";
+
+emailUrl = "http://localhost:3434/email-mock";
+load("vote-lib.js");
+
+process Vote {
+  receive(self) { |newvote|
+    vote = newvote;
+    status = <status>Vote created</status>;
+    reply(status);
+  }
+
+  m = 0;
+  while(m < vote.participants.email.length()) {
+    inviteEmail = <email><to>{ vote.participants.email[m] }</to></email>;
+    inviteEmail.body = "A vote has been started on " + vote.text + 
+      ". Please cast your vote at " + self + ".";
+    request(emailUrl, "post", inviteEmail);
+    m = m + 1;
+  }
+
+  // Declaring all necessary resources
+  tally = resource("/tally/");
+  ballot = resource("/ballot/{email}");
+  close = resource("/close");
+  cancel = resource("/cancel");
+
+  ballots = <ballots></ballots>;
+
+  voteOpen = true;
+  scope {
+    receive(cancel);
+  } onQuery(self) {
+    reply(vote);
+  } onQuery(tally) {
+    currentTally = getCurrentTally(ballots);
+    reply(currentTally);
+  } onUpdate(ballot) {
+    ballots = updateBallots(ballots, ballot, email);
+    userBallot = getUserBallot(ballots, email);
+    reply(userBallot);
+  } onQuery(ballot) {
+    userBallot = getUserBallot(ballots, email);
+    reply(userBallot);
+  } onReceive(close) {
+    reply(vote);
+  }
+}
