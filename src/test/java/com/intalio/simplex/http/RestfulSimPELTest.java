@@ -299,4 +299,19 @@ public class RestfulSimPELTest extends TestCase {
         assertTrue(resp.getStatus() == 201);
     }
 
+    // Start the vote with a list of participant's e-mails and vote details (what for, choices)
+    // Send all participants an e-mail with the vote id (moked e-mail service)
+    // Participants vote
+    // The temporary tally is always available
+    // When all the votes have been collected or is forcefully closed, no more votes get accepted
+    // The tally is still available
+
+    private static final String VOTE =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/vote\";\n" +
+
+            "process Vote { \n" +
+            "   \n" +
+            "}";
+
 }

@@ -111,7 +111,9 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
         }
 
         String responseCntType = FEJOML.XML;
-        if (FEJOML.recognizeType(resp.getType().getType())) responseCntType = resp.getType().getType();
+        String cntType = resp.getType().toString();
+        if (cntType.indexOf(";") > 0) cntType = cntType.split(";")[0];
+        if (FEJOML.recognizeType(cntType)) responseCntType = cntType;
 
         Element responseXML = null;
         if (response != null && response.trim().length() > 0) {

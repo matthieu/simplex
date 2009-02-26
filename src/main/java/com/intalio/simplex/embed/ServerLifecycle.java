@@ -153,7 +153,6 @@ public class ServerLifecycle {
     }
 
     protected Scheduler createScheduler() {
-        // TODO as long as we're using HSQL that's fine, afterward...
         Connection conn = null;
         Statement stmt = null;
         ResultSet result = null;
@@ -203,7 +202,6 @@ public class ServerLifecycle {
     }
 
     protected void initProcessStore() {
-        // TODO Support persistent store as well
         _store = new EmbeddedStore();
         _store.registerListener(new ProcessStoreListenerImpl());
     }
