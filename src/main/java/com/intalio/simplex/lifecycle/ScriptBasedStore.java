@@ -94,7 +94,7 @@ public class ScriptBasedStore extends EmbeddedStore {
                                 if (cbp.lastModified() < script.lastModified())
                                     newer.add(script);
                                 else if (firstRun)
-                                    unknown.add(cbp);
+                                    unknown.add(script);
                             }
                         }
 
@@ -112,12 +112,8 @@ public class ScriptBasedStore extends EmbeddedStore {
                     // Processes that haven't been activated yet (restart)
                     for (File p : unknown) {
                         __log.debug("Activating " + p);
-                        Serializer ser = new Serializer(new FileInputStream(p));
-                        ProcessModel oprocess = ser.readPModel();
-                        _processes.put(oprocess.getQName(), oprocess);
-                        _descriptors.put(oprocess.getQName(), new Descriptor());
-                        fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, oprocess.getQName(), null));
-                        fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, oprocess.getQName(), null));
+                        ProcessModel oprocess = compileProcess(p);
+                        __log.debug("Process " + oprocess.getQName().getLocalPart()  + " reactivated successfully.\n");
                     }
 
                     // Removed processes for clean up

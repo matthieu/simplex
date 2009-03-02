@@ -105,6 +105,8 @@ public class EngineWebResource {
             desc = new ResourceDesc();
             desc.resourcePath = nonSlashed;
             _engineResources.put(nonSlashed, desc);
+        } else {
+            desc.removed = false;
         }
         desc.enable(resource.getMethod());
     }

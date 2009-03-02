@@ -1,6 +1,7 @@
-processConfig.inMem = true;
+processConfig.inMem = false;
 processConfig.address = "/api/vote";
 
+rootUrl = "http://localhost:8080"
 emailUrl = "http://localhost:3434/email-mock";
 load("vote-lib.js");
 
@@ -14,8 +15,8 @@ process Vote {
   m = 0;
   while(m < vote.participants.email.length()) {
     inviteEmail = <email><to>{ vote.participants.email[m] }</to></email>;
-    inviteEmail.body = "A vote has been started on " + vote.text + 
-      ". Please cast your vote at " + self + ".";
+    inviteEmail.body = "A vote has been started on '" + vote.text + 
+      "'. Please cast your vote at " + (rootUrl + self) + ".";
     request(emailUrl, "post", inviteEmail);
     m = m + 1;
   }
