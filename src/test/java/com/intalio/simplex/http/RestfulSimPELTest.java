@@ -271,7 +271,7 @@ public class RestfulSimPELTest extends TestCase {
         assertEquals(response, "http://foo/bar");
     }
 
-    private static final String HELLO_FORM_WORLD = // TODO reply with HTML
+    private static final String HELLO_FORM_WORLD =
             "processConfig.inMem = true;\n" +
             "processConfig.address = \"/hello-form\";\n" +
 
@@ -299,19 +299,32 @@ public class RestfulSimPELTest extends TestCase {
         assertTrue(resp.getStatus() == 201);
     }
 
-    // Start the vote with a list of participant's e-mails and vote details (what for, choices)
-    // Send all participants an e-mail with the vote id (moked e-mail service)
-    // Participants vote
-    // The temporary tally is always available
-    // When all the votes have been collected or is forcefully closed, no more votes get accepted
-    // The tally is still available
-
-    private static final String VOTE =
+    private static final String SUB_URL_PROCESS =
             "processConfig.inMem = true;\n" +
-            "processConfig.address = \"/vote\";\n" +
+            "processConfig.address = \"/sub/address/hello-form\";\n" +
 
-            "process Vote { \n" +
-            "   \n" +
+            "process HelloFormWorld { \n" +
+            "   receive(self) { |form| \n" +
+            "       helloXml = <hello>{\"Hello \" + form.firstname + \" \" + form.lastname}</hello>; \n" +
+            "       reply(helloXml); \n" +
+            "   }\n" +
             "}";
+
+    public void testSubUrlProcess() throws Exception {
+        server.start();
+        server.deploy(SUB_URL_PROCESS);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/sub/address/hello-form");
+        ClientResponse resp = wr.path("/").type("application/x-www-form-urlencoded")
+                .post(ClientResponse.class, "firstname=foo&lastname=bar");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("Hello foo bar") > 0);
+        assertTrue(resp.getMetadata().get("Location").get(0), resp.getMetadata().get("Location").get(0).matches(".*/hello-form/[0-9]*"));
+        assertTrue(resp.getStatus() == 201);
+    }
 
 }
