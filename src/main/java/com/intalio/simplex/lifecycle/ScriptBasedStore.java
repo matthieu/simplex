@@ -98,11 +98,11 @@ public class ScriptBasedStore extends EmbeddedStore {
                             }
                         }
 
-                        if (!found && !firstRun) newer.add(script);
+                        if (!found) unknown.add(script);
                     }
 
-                    // Newer process that need to be compiled
-                    ArrayList<File> toRebuild = new ArrayList<File>(newer);
+                    ArrayList<File> toRebuild = new ArrayList<File>(unknown);
+                    toRebuild.addAll(newer);
                     for (File p : toRebuild) {
                         __log.debug("Recompiling " + p);
                         ProcessModel oprocess = compileProcess(p);
@@ -115,8 +115,6 @@ public class ScriptBasedStore extends EmbeddedStore {
                         ProcessModel oprocess = compileProcess(p);
                         __log.debug("Process " + oprocess.getQName().getLocalPart()  + " reactivated successfully.\n");
                     }
-
-                    // Removed processes for clean up
                     for (File p : removed) {
                         Serializer ser = new Serializer(new FileInputStream(p));
                         ProcessModel oprocess = ser.readPModel();
@@ -131,13 +129,14 @@ public class ScriptBasedStore extends EmbeddedStore {
                         // whatever
                         e.printStackTrace();
                     }
+                    __log.info("Deployment successful.\n");
                 } catch (Throwable t) {
                     if (t instanceof CompilationException)
                         __log.info(t.getMessage() + "Deployment aborted.\n");
                     else
                         __log.error("Unexpected error during compilation.", t);
                 } finally {
-                    firstRun = false;                    
+                    firstRun = false;
                 }
             }
 
