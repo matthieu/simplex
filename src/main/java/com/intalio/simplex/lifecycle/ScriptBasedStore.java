@@ -58,6 +58,7 @@ public class ScriptBasedStore extends EmbeddedStore {
 
     private class ScriptPoller implements Runnable {
         private boolean run = true;
+        private boolean firstRun = true;
 
         private final FileFilter _scriptsFilter = new FileFilter() {
             public boolean accept(File path) {
@@ -92,20 +93,34 @@ public class ScriptBasedStore extends EmbeddedStore {
                                 removed.remove(cbp);
                                 if (cbp.lastModified() < script.lastModified())
                                     newer.add(script);
+                                else if (firstRun)
+                                    unknown.add(cbp);
                             }
                         }
 
-                        if (!found) unknown.add(script);
+                        if (!found && !firstRun) newer.add(script);
                     }
 
-                    ArrayList<File> toRebuild = new ArrayList<File>(unknown);
-                    toRebuild.addAll(newer);
+                    // Newer process that need to be compiled
+                    ArrayList<File> toRebuild = new ArrayList<File>(newer);
                     for (File p : toRebuild) {
                         __log.debug("Recompiling " + p);
                         ProcessModel oprocess = compileProcess(p);
+                        __log.info("Process " + oprocess.getQName().getLocalPart()  + " deployed successfully.\n");
+                    }
+
+                    // Processes that haven't been activated yet (restart)
+                    for (File p : unknown) {
+                        __log.debug("Activating " + p);
+                        Serializer ser = new Serializer(new FileInputStream(p));
+                        ProcessModel oprocess = ser.readPModel();
+                        _processes.put(oprocess.getQName(), oprocess);
+                        _descriptors.put(oprocess.getQName(), new Descriptor());
                         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, oprocess.getQName(), null));
                         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, oprocess.getQName(), null));
                     }
+
+                    // Removed processes for clean up
                     for (File p : removed) {
                         Serializer ser = new Serializer(new FileInputStream(p));
                         ProcessModel oprocess = ser.readPModel();
@@ -120,12 +135,13 @@ public class ScriptBasedStore extends EmbeddedStore {
                         // whatever
                         e.printStackTrace();
                     }
-                    __log.info("Deployment successful.\n");
                 } catch (Throwable t) {
                     if (t instanceof CompilationException)
                         __log.info(t.getMessage() + "Deployment aborted.\n");
                     else
                         __log.error("Unexpected error during compilation.", t);
+                } finally {
+                    firstRun = false;                    
                 }
             }
 

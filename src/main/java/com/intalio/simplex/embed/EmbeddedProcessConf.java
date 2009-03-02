@@ -48,8 +48,7 @@ public class EmbeddedProcessConf implements ProcessConf {
     }
 
     public QName getProcessId() {
-        return new QName(_oprocess.getQName().getNamespaceURI(),
-                _oprocess.getQName().getLocalPart()+"-"+getVersion());
+        return new QName(_oprocess.getQName().getNamespaceURI(), _oprocess.getQName().getLocalPart());
     }
 
     public QName getType() {
