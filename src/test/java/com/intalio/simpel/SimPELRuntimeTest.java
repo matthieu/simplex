@@ -337,4 +337,24 @@ public class SimPELRuntimeTest extends TestCase {
         assertTrue(DOMUtils.domToString(result).indexOf("Hello World") > 0);
     }
 
+    private static final String BOOLEAN_ASSIGN =
+            "processConfig.inMem = true;\n" +
+            "process BooleanAssign {\n" +
+            "   msgIn = receive(myPl, helloOp); \n" +
+            "   msgOut = true;\n" +
+            "   reply(msgOut, myPl, helloOp);\n" +
+            "}";
+
+    public void testBooleanAssign() throws Exception {
+        server.start();
+        server.deploy(BOOLEAN_ASSIGN);
+
+        Document doc = DOMUtils.newDocument();
+        Element wrapper = doc.createElementNS("http://ode.apache.org/simpel/1.0/definition/BooleanAssign", "helloOpRequest");
+        wrapper.setTextContent("Hello");
+
+        Element result = server.sendMessage("myPl", "helloOp", wrapper);
+        assertTrue(DOMUtils.domToString(result).indexOf("true") > 0);
+    }
+
 }
