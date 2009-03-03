@@ -1,0 +1,9 @@
+processConfig.inMem = true;
+processConfig.address = "/email-mock";
+
+process VoteEmailMock {
+  receive(self) { |email|
+    status = <status>Email sent.</status>;
+    reply(status);
+  }
+}
