@@ -327,4 +327,32 @@ public class RestfulSimPELTest extends TestCase {
         assertTrue(resp.getStatus() == 201);
     }
 
+    public static final String REQUEST_NO_OUTPUT =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/noout\";\n" +
+
+            "var testRoot = \"http://localhost:3434/post201\"; " +
+            "process PostRedirect {\n" +
+            "   receive(self) { |query|\n" +
+            "       postMsg = <foo>foo</foo>;\n" +
+            "       request(testRoot, \"post\", postMsg);\n" +
+            "       msg = <ok>ok</ok>;\n" +
+            "       reply(msg);\n" +
+            "   }\n" +
+            "}";
+
+    public void testRequestNoOutput() throws Exception {
+        server.start();
+        server.deploy(REQUEST_NO_OUTPUT);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/noout");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<foo>foo</foo>");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+        assertTrue(response.indexOf("ok") > 0);
+    }
 }
