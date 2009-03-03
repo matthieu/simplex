@@ -101,8 +101,7 @@ public class ScriptBasedStore extends EmbeddedStore {
                         if (!found) unknown.add(script);
                     }
 
-                    ArrayList<File> toRebuild = new ArrayList<File>(unknown);
-                    toRebuild.addAll(newer);
+                    ArrayList<File> toRebuild = new ArrayList<File>(newer);
                     for (File p : toRebuild) {
                         __log.debug("Recompiling " + p);
                         ProcessModel oprocess = compileProcess(p);
@@ -129,7 +128,6 @@ public class ScriptBasedStore extends EmbeddedStore {
                         // whatever
                         e.printStackTrace();
                     }
-                    __log.info("Deployment successful.\n");
                 } catch (Throwable t) {
                     if (t instanceof CompilationException)
                         __log.info(t.getMessage() + "Deployment aborted.\n");
