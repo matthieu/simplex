@@ -31,17 +31,22 @@ import org.w3c.dom.Node;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ProcessWebResource {
 
     private EngineWebResource.ResourceDesc _resource;
     private static ServerLifecycle _serverLifecyle;
     private String _root;
+    private HashMap<String,String> _params;
 
-    public ProcessWebResource(EngineWebResource.ResourceDesc resource, ServerLifecycle serverLifecyle, String root) {
+    public ProcessWebResource(EngineWebResource.ResourceDesc resource, ServerLifecycle serverLifecyle,
+                              String root, HashMap<String,String> params) {
         _resource = resource;
         _serverLifecyle = serverLifecyle;
         _root = root;
+        _params = params;
     }
 
     @GET @Produces("application/xml")

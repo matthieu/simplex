@@ -20,6 +20,7 @@ package com.intalio.simplex.http;
 
 import com.intalio.simplex.embed.ServerLifecycle;
 import com.sun.jersey.api.NotFoundException;
+import com.sun.jersey.api.uri.UriTemplate;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 import org.apache.ode.bpel.iapi.Resource;
 import org.apache.ode.utils.DOMUtils;
@@ -36,6 +37,10 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.regex.MatchResult;
 
 @Path("/")
 public class EngineWebResource {
@@ -44,7 +49,7 @@ public class EngineWebResource {
     private static ServerLifecycle _serverLifecyle;
 
     //    private HashMap<String,QName> _services = new HashMap<String, QName>();
-    private static ConcurrentHashMap<String,ResourceDesc> _engineResources;
+    private static ConcurrentHashMap<UriTemplate,ResourceDesc> _engineResources;
 
     @GET @Produces("application/xhtml+xml")
     public String getXHTML() {
@@ -81,15 +86,30 @@ public class EngineWebResource {
 
     @Path("{subpath}")
     public ProcessWebResource buildProcessResource(@javax.ws.rs.core.Context UriInfo subpath) {
-        // TODO This should be able to match based on a pattern
-        ResourceDesc rdesc = _engineResources.get(stripSlashes(subpath.getPath()));
+        Object[] rdesc = findResource(subpath.getPath());
         if (rdesc == null) throw new NotFoundException("No known resource at this location.");
-        else if (rdesc.removed) throw new WebApplicationException(Response.status(410)
+        else if (((ResourceDesc)rdesc[0]).removed) throw new WebApplicationException(Response.status(410)
                 .entity("The resource isn't available anymore.").type("text/plain").build());
         else {
             String base = subpath.getBaseUri().toString();
-            return new ProcessWebResource(rdesc, _serverLifecyle, base.substring(0, base.length()-1));
+            return new ProcessWebResource((ResourceDesc)rdesc[0], _serverLifecyle,
+                    base.substring(0, base.length() - 1), (HashMap<String,String>)rdesc[1]);
         }
+    }
+
+    private Object[] findResource(String url) {
+        String surl = stripSlashes(url);
+        for (Map.Entry<UriTemplate, ResourceDesc> resourceDesc : _engineResources.entrySet()) {
+            MatchResult mr;
+            if ((mr = resourceDesc.getKey().getPattern().match(surl)) != null) {
+                HashMap<String,String> params = new HashMap<String,String>();
+                List<String> vars = resourceDesc.getKey().getTemplateVariables();
+                for (int m = 0; m < mr.groupCount(); m++)
+                    params.put(vars.get(m), mr.group(m));
+                return new Object[] { resourceDesc.getValue(), params };
+            }
+        }
+        return null;
     }
 
     private static String stripSlashes(String sl) {
@@ -100,11 +120,11 @@ public class EngineWebResource {
 
     public static void registerResource(Resource resource) {
         String nonSlashed = stripSlashes(resource.getUrl());
-        ResourceDesc desc = _engineResources.get(nonSlashed);
+        ResourceDesc desc = _engineResources.get(new UriTemplate(nonSlashed));
         if (desc == null) {
             desc = new ResourceDesc();
             desc.resourcePath = nonSlashed;
-            _engineResources.put(nonSlashed, desc);
+            _engineResources.put(new UriTemplate(nonSlashed), desc);
         } else {
             desc.removed = false;
         }
@@ -112,14 +132,14 @@ public class EngineWebResource {
     }
 
     public static void unregisterResource(Resource resource) {
-        ResourceDesc rdesc = _engineResources.get(stripSlashes(resource.getUrl()));
+        ResourceDesc rdesc = _engineResources.get(new UriTemplate(stripSlashes(resource.getUrl())));
         rdesc.removed = true;
         // TODO eventually cleanup removed resources after a while
     }
 
     public static void startRestfulServer(ServerLifecycle serverLifecyle) {
         _serverLifecyle = serverLifecyle;
-        _engineResources = new ConcurrentHashMap<String,ResourceDesc>();
+        _engineResources = new ConcurrentHashMap<UriTemplate,ResourceDesc>();
         ServletHolder sh = new ServletHolder(ServletContainer.class);
 
         sh.setInitParameter("com.sun.jersey.config.property.resourceConfigClass",
