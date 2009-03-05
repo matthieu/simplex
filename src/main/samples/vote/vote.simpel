@@ -5,13 +5,21 @@ rootUrl = "http://localhost:3434"
 emailUrl = "http://localhost:3434/email-mock";
 load("vote-lib.js");
 
+function addLinks(vote, addr) {
+  vote.appendChild(<link rel="cancel">{rootUrl + addr + "/cancel"}</link>);
+  vote.appendChild(<link rel="tally">{rootUrl + addr + "/tally"}</link>);
+  return vote;
+}
+
 process Vote {
   receive(self) { |newvote|
-    vote = newvote;
+    vote = addLinks(newvote, self);
     status = <status>Vote created</status>;
     reply(status);
   }
 
+
+  // Sending an e-mail to all participants to let them know a vote started
   m = 0;
   while(m < vote.participants.email.length()) {
     inviteEmail = <email><to>{ vote.participants.email[m] }</to></email>;
@@ -22,29 +30,40 @@ process Vote {
   }
 
   // Declaring all necessary resources
-  tally = resource("/tally/");
+  tally = resource("/tally");
   ballot = resource("/ballot/{email}");
   close = resource("/close");
   cancel = resource("/cancel");
 
+  // This element will hold all the ballots
   ballots = <ballots></ballots>;
 
   voteOpen = true;
   scope {
-    receive(cancel);
+    receive(cancel) { |r|
+      cancelResp = <vote>Vote canceled.</vote>;
+      reply(cancelResp);
+    }
   } onQuery(self) {
     reply(vote);
   } onQuery(tally) {
     currentTally = getCurrentTally(ballots);
     reply(currentTally);
   } onReceive(ballot) { |b, email|
-    ballots = updateBallots(ballots, b, email);
-    userBallot = getUserBallot(ballots, email);
-    reply(userBallot);
+    if (voteOpen == true) {
+      ballots = updateBallots(ballots, b, email);
+      userBallot = getUserBallot(ballots, email);
+      reply(userBallot);
+    } else {
+      resp = <vote>Vote is closed.</vote>;
+      reply(resp);
+    }
   } onQuery(ballot) { |email|
     userBallot = getUserBallot(ballots, email);
     reply(userBallot);
   } onReceive(close) {
-    reply(vote);
+    voteOpen = false;
+    finalTally = getCurrentTally(ballots);
+    reply(finalTally);
   }
 }

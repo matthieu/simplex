@@ -1,6 +1,6 @@
 
 function updateBallots(ballots, newBallot, email) {
-  b = <ballot>{newBallot}</ballot>;
+  b = <ballot>{newBallot.text()}</ballot>;
   b.@email = email;
   ballots.appendChild(b);
   return ballots;
