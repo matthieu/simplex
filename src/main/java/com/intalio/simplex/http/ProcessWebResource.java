@@ -54,6 +54,9 @@ public class ProcessWebResource {
         if (_resource.get) {
             RESTInMessageExchange mex = _serverLifecyle.getServer().createMessageExchange(
                     _resource.toResource("GET"), new GUID().toString());
+            for (Map.Entry<String, String> param : _params.entrySet())
+                mex.setParameter(param.getKey(), param.getValue());
+
             try {
                 mex.invokeBlocking();
             } catch (java.util.concurrent.TimeoutException te) {
@@ -92,6 +95,8 @@ public class ProcessWebResource {
                 request.setMessage(docElmt);
                 mex.setRequest(request);
             }
+            for (Map.Entry<String, String> param : _params.entrySet())
+                mex.setParameter(param.getKey(), param.getValue());
             try {
                 mex.invokeBlocking();
             } catch (java.util.concurrent.TimeoutException te) {

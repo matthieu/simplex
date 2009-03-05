@@ -355,4 +355,58 @@ public class RestfulSimPELTest extends TestCase {
         System.out.println("=> " + response);
         assertTrue(response.indexOf("ok") > 0);
     }
+
+    public static final String PARAMETERIZED_POST =
+            "processConfig.inMem = true;\n" +
+            "processConfig.address = \"/parampost\";\n" +
+
+            "var testRoot = \"http://localhost:3434/post201\"; " +
+            "process ParameterPost {\n" +
+            "   receive(self) { |begin|\n" +
+            "       rep = <ok>ok</ok>;\n" +
+            "       reply(rep);\n" +
+            "   }\n" +
+
+            "   resp = <resp></resp>; \n" +
+            "   sub = resource(\"/sub/{name}\"); \n" +
+            "   done = resource(\"/done\"); \n" +
+            "   scope { \n" +
+            "       receive(done) { |msg| \n " +
+            "           reply(resp); \n" +
+            "       } \n " +
+            "   } onReceive(sub) { |cnt,name| \n" +
+            "       resp.name = name; \n" +
+            "       reply(resp); \n" +
+            "   } \n" +
+            "}";
+
+    public void testParameterizedPost() throws Exception {
+        server.start();
+        server.deploy(PARAMETERIZED_POST);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/parampost");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<foo>foo</foo>");
+        String response = resp.getEntity(String.class);
+        assertTrue(response.indexOf("ok") > 0);
+        assertTrue(resp.getStatus() == 201);
+
+        String location = resp.getMetadata().get("Location").get(0);
+        WebResource pwr = c.resource(location + "/sub/johndoe");
+        ClientResponse presp = pwr.accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<foo>foo</foo>");
+        String response2 = presp.getEntity(String.class);
+        assertTrue(response2.indexOf("<name>johndoe</name>") > 0);
+
+        WebResource donewr = c.resource(location + "/done");
+        ClientResponse dresp = donewr.accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<foo>foo</foo>");
+        String doneResponse = dresp.getEntity(String.class);
+        assertTrue(doneResponse.indexOf("<name>johndoe</name>") > 0);
+    }
+
+
 }

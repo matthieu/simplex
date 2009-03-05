@@ -105,7 +105,7 @@ public class EngineWebResource {
                 HashMap<String,String> params = new HashMap<String,String>();
                 List<String> vars = resourceDesc.getKey().getTemplateVariables();
                 for (int m = 0; m < mr.groupCount(); m++)
-                    params.put(vars.get(m), mr.group(m));
+                    params.put(vars.get(m), mr.group(m+1));
                 return new Object[] { resourceDesc.getValue(), params };
             }
         }
