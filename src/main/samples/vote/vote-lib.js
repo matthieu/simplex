@@ -1,6 +1,6 @@
 
 function updateBallots(ballots, newBallot, email) {
-  b = <ballot>{ballot}</ballot>;
+  b = <ballot>{newBallot}</ballot>;
   b.@email = email;
   ballots.appendChild(b);
   return ballots;
@@ -9,10 +9,11 @@ function updateBallots(ballots, newBallot, email) {
 function getCurrentTally(ballots) {
   tally = <tally></tally>;
   for each (var b in ballots.ballot) {
-    if (tally.(@text == b).length() == 0) {
-      tally.vote = <vote text="">1</vote>;
+    if (tally.vote.(@text == b.text()).length() == 0) {
+      tally.appendChild( <vote text={b.text()}>1</vote> );
     } else {
-      tally.vote(@text == b) += 1;
+      v = tally.vote.(@text == b.text());
+      v.setChildren(parseInt(v.text()) + 1)
     }
   }
   return tally;
