@@ -1,0 +1,40 @@
+processConfig.inMem = false;
+processConfig.address = "/absence";
+
+shotBase = "http://localhost:3000"
+myBase = "http://localhost:3434";
+
+function buildTask(login, password, callback) {
+  task = <task><title>SimPEL Task</title>
+            <description>Test task created from a SimPEL process.</description>
+            <owner>mriou</owner>
+            <webhooks type="array"><webhook><event>completed</event><url>{callback}</url></webhook></webhooks>
+         </task>;
+  task.headers.basicAuth.login = login;
+  task.headers.basicAuth.password = password;
+  task.headers.Accept = "application/xml";
+  return task;
+}
+
+function doPrint(str) {
+  print(str);
+  return <empty/>;
+
+}
+
+process TaskCreator { 
+  callback = resource("/callback");
+  
+  receive(self) { |s|
+    task = buildTask("mriou", "secret", myBase + callback);
+    resp = request(shotBase + "/tasks", "POST", task);
+    reply(resp);
+  }
+  foo = doPrint("### waiting for callback");
+
+  receive(callback) { |msg|
+    reply(msg);
+  }
+  foo = doPrint("### callback received!!");
+}
+

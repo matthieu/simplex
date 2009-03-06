@@ -1,0 +1,5 @@
+curl --data "<vote><participants><email>mriou@intalio.com</email><email>assaf@intalio.com</email></participants><text>Pepperoni or salsiccia?</text></vote>" --request POST --header "Content-Type: application/xml" http://localhost:3434/api/vote
+
+curl --data "<vote>Pepperoni</vote>" --request POST --header "Content-Type: application/xml" http://localhost:3434/api/vote/54/ballot/mriou
+
+curl --request GET http://localhost:3434/api/vote/54/tally
