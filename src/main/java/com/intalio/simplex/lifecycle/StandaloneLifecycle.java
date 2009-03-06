@@ -84,4 +84,7 @@ public class StandaloneLifecycle extends ServerLifecycle {
         _store.registerListener(new ProcessStoreListenerImpl());
     }
 
+    public File getScriptsDir() {
+        return _scriptsDir;
+    }
 }

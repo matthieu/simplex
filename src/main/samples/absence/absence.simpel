@@ -19,7 +19,6 @@ function buildTask(login, password, callback) {
 function doPrint(str) {
   print(str);
   return <empty/>;
-
 }
 
 process TaskCreator { 
@@ -30,11 +29,11 @@ process TaskCreator {
     resp = request(shotBase + "/tasks", "POST", task);
     reply(resp);
   }
-  foo = doPrint("### waiting for callback");
+  print("### waiting for callback");
 
   receive(callback) { |msg|
     reply(msg);
   }
-  foo = doPrint("### callback received!!");
+  print("### callback received!!");
 }
 

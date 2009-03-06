@@ -119,6 +119,7 @@ public class ScriptBasedStore extends EmbeddedStore {
                         ProcessModel oprocess = ser.readPModel();
                         fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.UNDEPLOYED, oprocess.getQName(), null));
                         _processes.remove(oprocess.getQName());
+                        _descriptors.remove(oprocess.getQName());
                         p.delete();
                     }
 
