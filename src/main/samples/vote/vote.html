@@ -1,0 +1,86 @@
+<html>
+  <head>
+    <script type="text/javascript" src="/common/jquery.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function(){
+          // Adds a new voter text box
+          $("#addvoter").click(function() {
+            $("#voters").append("<p><input id='voter' type='text'/><p>");
+          });
+
+          // Builds and submit the information in the form to the vote SimPEL
+          // processing, formatting inputs as XML.
+          $("#send").click(function() {
+            var voteXml = <vote><participants></participants></vote>;
+            voteXml.text = $("#votetext").attr("value");
+            $("#voters").find("input").each(function() {
+              voteXml.participants.appendChild(<email>{this.value}</email>);
+            });
+            console.log(voteXml);
+
+            $.ajax({
+              type: "POST",
+              url: "/api/vote",
+              contentType: "application/xml",
+              data: voteXml.toXMLString(),
+              complete: function(xmlReq) {
+                $("#voters").find("input").each(function() {
+                  addBallot(this.value, xmlReq.getResponseHeader("Location"));
+                });
+              }
+            });
+          });
+        });
+
+function addBallot(name, url) {
+  $("#ballots").append("<p>" + name + ": <input id='ballot-" + name + "' type='text'/>" + 
+      "<input id='send-" + name + "' type='submit'/></p>");
+  $("#send-" + name).click(function() {
+      var ballot = <vote><ballot>{ $("#ballot-" + name).attr("value") }</ballot></vote>;
+      $.ajax({
+        type: "POST",
+        url: url + "/ballot/" + name,
+        contentType: "application/xml",
+        data: ballot.toXMLString(),
+        complete: function(xmlReq) {
+          $("#send-" + name).after(" OK ");
+          refreshTally(url + "/tally");
+        }
+      });
+  });
+}
+
+function refreshTally(url) {
+  $.ajax({
+    type: "GET",
+    url: url,
+    contentType: "application/xml",
+    dataType: "xml",
+    success: function(tally) {
+      $("#tally").empty();
+      console.log(tally);
+      $("vote", tally).each(function() {
+        console.log(this);
+        $("#tally").append("<p>" + $(this).attr("text") + ": " + $(this).text() + "</p>");
+      });
+    }
+  });
+}
+
+    </script>
+  </head>
+  <body>
+    <p>Description:</p>
+    <textarea id="votetext" rows="2" cols="40"></textarea>
+
+    <p>Voters emails:</p>
+    <div id="voters">
+      <p><input id="voter" type="text"/><a id="addvoter" href="#">Add</a></p>
+    </div>
+
+    <p><input id="send" type="submit"/></p>
+
+    <div id="ballots"></div>
+    <div id="tally"></div>
+  </body>
+</html>

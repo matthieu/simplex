@@ -2,13 +2,23 @@ processConfig.inMem = false;
 processConfig.address = "/api/vote";
 
 rootUrl = "http://localhost:3434"
-emailUrl = "http://localhost:3434/email-mock";
+emailUrl = "http://localhost:3434/api/mock/email";
 load("vote-lib.js");
 
 function addLinks(vote, addr) {
   vote.appendChild(<link rel="cancel">{rootUrl + addr + "/cancel"}</link>);
   vote.appendChild(<link rel="tally">{rootUrl + addr + "/tally"}</link>);
   return vote;
+}
+
+function createBallotInfo(vote, voteUrl, email) {
+  info = vote.copy();
+  info.appendChild(<link rel="ballot">{rootUrl + voteUrl + "/ballot/" + email}</link>);
+  return info;
+}
+
+function buildBallotUrl(processUrl, email) {
+  return rootUrl + processUrl.slice(4) + "/" + email;
 }
 
 process Vote {
@@ -18,13 +28,12 @@ process Vote {
     reply(status);
   }
 
-
   // Sending an e-mail to all participants to let them know a vote started
   m = 0;
   while(m < vote.participants.email.length()) {
-    inviteEmail = <email><to>{ vote.participants.email[m] }</to></email>;
+    inviteEmail = <email><to>{ vote.participants.email[m] + "@intalio.com" }</to></email>;
     inviteEmail.body = "A vote has been started on '" + vote.text + 
-      "'. Please cast your vote at " + (rootUrl + self) + ".";
+      "'. Please cast your vote at " + buildBallotUrl(self, vote.participants.email[m]) + ".";
     request(emailUrl, "post", inviteEmail);
     m = m + 1;
   }
@@ -51,7 +60,7 @@ process Vote {
     reply(currentTally);
   } onReceive(ballot) { |b, email|
     if (voteOpen == true) {
-      ballots = updateBallots(ballots, b, email);
+      ballots = updateBallots(ballots, b.ballot, email);
       userBallot = getUserBallot(ballots, email);
       reply(userBallot);
     } else {
@@ -60,7 +69,12 @@ process Vote {
     }
   } onQuery(ballot) { |email|
     userBallot = getUserBallot(ballots, email);
-    reply(userBallot);
+    if (userBallot.length != 0) {
+      reply(userBallot);
+    } else {
+      info = createBallotInfo(vote, self, email);
+      reply(info);
+    }
   } onReceive(close) {
     voteOpen = false;
     finalTally = getCurrentTally(ballots);

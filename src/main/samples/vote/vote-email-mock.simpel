@@ -1,8 +1,15 @@
 processConfig.inMem = true;
-processConfig.address = "/email-mock";
+processConfig.address = "/api/mock/email";
+
+function printEmailInfo(email) {
+  print("\n###### Email received ######");
+  print("## Recipient: " + email.to);
+  print("## Body: " + email.body + "\n");
+}
 
 process VoteEmailMock {
   receive(self) { |email|
+    printEmailInfo(email);
     status = <status>Email sent.</status>;
     reply(status);
   }

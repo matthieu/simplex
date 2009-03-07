@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.MatchResult;
+import java.net.URI;
 
 @Path("/")
 public class EngineWebResource {
@@ -97,9 +98,8 @@ public class EngineWebResource {
         else if (((ResourceDesc)rdesc[0]).removed) throw new WebApplicationException(Response.status(410)
                 .entity("The resource isn't available anymore.").type("text/plain").build());
         else {
-            String base = subpath.getBaseUri().toString();
             return new ProcessWebResource((ResourceDesc)rdesc[0], _serverLifecyle,
-                    base.substring(0, base.length() - 1), (HashMap<String,String>)rdesc[1]);
+                    getRoot(subpath.getRequestUri()), (HashMap<String,String>)rdesc[1]);
         }
     }
 
@@ -222,5 +222,9 @@ public class EngineWebResource {
             }
             return m.toString();
         }
+    }
+
+    private String getRoot(URI uri) {
+        return uri.getScheme() + "://" + uri.getHost() + ":" + uri.getPort();
     }
 }
