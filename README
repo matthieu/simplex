@@ -1,0 +1,12 @@
+ Intalio|Simplex
+-----------------
+
+Simplex is the main runtime for SimPEL, the Simple Process Execution
+Language. Simplex is lightweight and versatile, allowing deployment
+and redeployment of SimPEL processes on the fly while you edit them.
+It also knows a lot about HTTP and is generally built to make your 
+life easier.
+
+To learn more about SimPEL and Simple please visit:
+
+http://oss.intalio.com

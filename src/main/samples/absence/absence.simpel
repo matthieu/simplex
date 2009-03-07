@@ -16,11 +16,6 @@ function buildTask(login, password, callback) {
   return task;
 }
 
-function doPrint(str) {
-  print(str);
-  return <empty/>;
-}
-
 process TaskCreator { 
   callback = resource("/callback");
   
