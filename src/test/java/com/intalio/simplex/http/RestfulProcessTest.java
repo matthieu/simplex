@@ -24,7 +24,9 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 import junit.framework.TestCase;
+import org.junit.Ignore;
 
+@Ignore
 public class RestfulProcessTest extends TestCase {
 
     private static final String HELLO_WORLD =

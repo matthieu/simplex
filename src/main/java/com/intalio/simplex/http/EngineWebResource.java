@@ -29,10 +29,8 @@ import org.mortbay.jetty.Server;
 import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.handler.ResourceHandler;
 import org.mortbay.jetty.handler.HandlerList;
-import org.mortbay.jetty.servlet.Context;
-import org.mortbay.jetty.servlet.ServletHolder;
-import org.mortbay.jetty.servlet.DefaultServlet;
-import org.mortbay.jetty.servlet.ServletHandler;
+import org.mortbay.jetty.handler.ContextHandler;
+import org.mortbay.jetty.servlet.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -147,27 +145,31 @@ public class EngineWebResource {
         _serverLifecyle = serverLifecyle;
         _engineResources = new ConcurrentHashMap<UriTemplate,ResourceDesc>();
 
+        _server = new Server(3434);
+        ContextHandler context = new ContextHandler("/");
+        context.setClassLoader(Thread.currentThread().getContextClassLoader());
+        _server.addHandler(context);
+
+        HandlerList handlerList = new HandlerList();
+        
         ServletHolder sh = new ServletHolder(ServletContainer.class);
         sh.setInitParameter("com.sun.jersey.config.property.resourceConfigClass",
                 "com.sun.jersey.api.core.PackagesResourceConfig");
         sh.setInitParameter("com.sun.jersey.config.property.packages", "com.intalio.simplex.http");
         ServletHandler shh = new ServletHandler();
-        shh.addServletWithMapping(sh, "/*");
-
-        _server = new Server(3434);
+        shh.addServletWithMapping(sh, "/");
+        SessionHandler sessionHandler = new SessionHandler();
+        sessionHandler.setHandler(shh);
 
         if (_serverLifecyle instanceof StandaloneLifecycle) {
             // Serving files in the script directory in addition to Jersey resources
             ResourceHandler rh = new ResourceHandler();
             rh.setResourceBase(((StandaloneLifecycle)_serverLifecyle).getScriptsDir().getAbsolutePath());
-
-            HandlerList hl = new HandlerList();
-            hl.setHandlers(new Handler[] { rh, shh });
-            _server.addHandler(hl);
-        } else {
-            _server.addHandler(shh);
+            handlerList.addHandler(rh);
         }
+        handlerList.addHandler(sessionHandler);
 
+        context.setHandler(handlerList);
         try {
             _server.start();
         } catch (Exception e) {
