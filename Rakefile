@@ -95,7 +95,7 @@ define "simplex" do
     end
 
     zip.path('bin').include _('src/main/bin/run'), _('src/main/bin/run.bat')
-    zip.path('log').include _('src/main/etc/log4j.properties')
+    zip.path('log').include _('src/main/etc/log4j.properties'), _('src/main/etc/logging.properties')
   end
 end
 
