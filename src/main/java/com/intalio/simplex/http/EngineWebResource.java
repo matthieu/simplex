@@ -30,6 +30,7 @@ import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.handler.ResourceHandler;
 import org.mortbay.jetty.handler.HandlerList;
 import org.mortbay.jetty.handler.ContextHandler;
+import org.mortbay.jetty.handler.DefaultHandler;
 import org.mortbay.jetty.servlet.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -46,6 +47,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.regex.MatchResult;
 import java.net.URI;
+import java.io.File;
+import java.text.MessageFormat;
 
 @Path("/")
 public class EngineWebResource {
@@ -53,41 +56,7 @@ public class EngineWebResource {
     private static Server _server;
     private static ServerLifecycle _serverLifecyle;
 
-    //    private HashMap<String,QName> _services = new HashMap<String, QName>();
     private static ConcurrentHashMap<UriTemplate,ResourceDesc> _engineResources;
-
-    @GET @Produces("application/xhtml+xml")
-    public String getXHTML() {
-        StringBuffer res = new StringBuffer();
-        res.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>");
-        res.append("<p>List of deployed processes:</p>");
-        res.append("<ul>");
-        for (ResourceDesc r : _engineResources.values()) {
-            String p = "/"+r.resourcePath;
-            res.append("<li><a href=\"").append(p).append("\">").append(p).append("</a>");
-            res.append("<span id=\"method\">").append(r.methods()).append("</span>");
-            res.append("<span id=\"content-type\">").append(r.contentType).append("</span>");
-            res.append("</li>");
-        }
-        res.append("</ul>");
-        res.append("</body></html>");
-        return res.toString();
-    }
-
-    @GET @Produces("application/xml")
-    public String getXML() {
-        Document doc = DOMUtils.newDocument();
-        Element root = doc.createElement("resources");
-        doc.appendChild(root);
-        for (ResourceDesc r : _engineResources.values()) {
-            Element pelmt = doc.createElement("resource");
-            pelmt.setAttribute("methods", r.methods());
-            pelmt.setAttribute("contentType", r.contentType);
-            pelmt.setTextContent("/"+r.resourcePath);
-            root.appendChild(pelmt);
-        }
-        return DOMUtils.domToString(doc);
-    }
 
     @Path("{subpath}")
     public ProcessWebResource buildProcessResource(@javax.ws.rs.core.Context UriInfo subpath) {
@@ -162,11 +131,20 @@ public class EngineWebResource {
         sessionHandler.setHandler(shh);
 
         if (_serverLifecyle instanceof StandaloneLifecycle) {
+            StandaloneLifecycle standaloneLifecycle = (StandaloneLifecycle) _serverLifecyle;
+
+            // Serving  built-in public html
+            ResourceHandler phrh = new ResourceHandler();
+            File phDir = new File(standaloneLifecycle.getWorkDir(), "public_html");
+            phrh.setResourceBase(phDir.getAbsolutePath());
+            handlerList.addHandler(phrh);
+
             // Serving files in the script directory in addition to Jersey resources
             ResourceHandler rh = new ResourceHandler();
-            rh.setResourceBase(((StandaloneLifecycle)_serverLifecyle).getScriptsDir().getAbsolutePath());
+            rh.setResourceBase(standaloneLifecycle.getScriptsDir().getAbsolutePath());
             handlerList.addHandler(rh);
         }
+
         handlerList.addHandler(sessionHandler);
 
         context.setHandler(handlerList);
@@ -229,4 +207,5 @@ public class EngineWebResource {
     private String getRoot(URI uri) {
         return uri.getScheme() + "://" + uri.getHost() + ":" + uri.getPort();
     }
+
 }

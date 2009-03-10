@@ -21,6 +21,7 @@ package com.intalio.simplex.embed;
 import com.intalio.simplex.EmbeddedServer;
 import com.intalio.simplex.Options;
 import com.intalio.simplex.http.EngineWebResource;
+import com.intalio.simplex.http.AdminWebResource;
 import com.intalio.simplex.embed.messaging.BindingContextImpl;
 import com.intalio.simplex.embed.messaging.MessageExchangeContextImpl;
 import org.apache.log4j.Logger;
@@ -44,9 +45,6 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * @author Matthieu Riou <mriou@apache.org>
- */
 public class ServerLifecycle {
     private static final Logger __log = Logger.getLogger(EmbeddedServer.class);
 
@@ -208,6 +206,7 @@ public class ServerLifecycle {
 
     private void initRestfulServer() {
         EngineWebResource.startRestfulServer(this);
+        AdminWebResource.init(_store);
     }
     
     public void setEngineWebResource(EngineWebResource webEngine) {
