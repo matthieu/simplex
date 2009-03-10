@@ -80,13 +80,18 @@ define "simplex" do
     XERCES, ANTLR_RT, local_libs, COMMONS.collections
   package :jar
 
+  package(:zip, :id=>'simplex-public-html').tap do |p|
+    p.include _("src/main/public_html/")
+  end
+
   package(:zip, :id=>'intalio-simplex').path("intalio-#{id}-#{version}").tap do |zip|
     zip.include meta_inf + ["README", "src/main/samples/"].map { |f| path_to(f) }
 
     zip.path('lib').include artifacts(SIMPEL, ODE, LOG4J, JAVAX.transaction, JAVAX.resource,
       COMMONS.lang, COMMONS.logging, LOG4J, WSDL4J, ASM, JERSEY, DERBY, TRANQL, OPENJPA, 
       GERONIMO.transaction, GERONIMO.connector, JAVAX.persistence, JAVAX.rest, JETTY, 
-      XERCES, ANTLR_RT, local_libs, COMMONS.collections, local_libs)
+      XERCES, ANTLR_RT, local_libs, COMMONS.collections, local_libs),
+      package(:zip, :id=>'simplex-public-html')
 
     packages.each do |pkg|
       unless pkg.id =~ /intalio-simplex/

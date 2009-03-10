@@ -24,8 +24,10 @@ import org.apache.log4j.Logger;
 import org.apache.ode.il.config.OdeConfigProperties;
 import org.apache.ode.il.dbutil.Database;
 
-import java.io.File;
+import java.io.*;
 import java.util.Properties;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class StandaloneLifecycle extends ServerLifecycle {
     
@@ -34,6 +36,7 @@ public class StandaloneLifecycle extends ServerLifecycle {
     protected File _scriptsDir;
     protected File _workDir;
     protected File _derbyDir;
+    protected File _libDir;
 
     public StandaloneLifecycle(File serverRoot, Options options) {
         super(options);
@@ -46,8 +49,11 @@ public class StandaloneLifecycle extends ServerLifecycle {
         _workDir = sysWorkDir != null ? new File(sysWorkDir) : new File(serverRoot, "work");
         if (!_workDir.exists()) _workDir.mkdirs();
 
-        String sysDerbyZipDir = System.getProperty("simplex.db.dir");
-        _derbyDir = sysDerbyZipDir != null ? new File(sysDerbyZipDir) : new File(_workDir, "db");
+        String sysDerbyDir = System.getProperty("simplex.db.dir");
+        _derbyDir = sysDerbyDir != null ? new File(sysDerbyDir) : new File(_workDir, "db");
+
+        _libDir = new File(serverRoot, "lib");
+        unzipPublicHtml();
     }
 
     protected void initDataSource() {
@@ -87,4 +93,45 @@ public class StandaloneLifecycle extends ServerLifecycle {
     public File getScriptsDir() {
         return _scriptsDir;
     }
+
+    public File getWorkDir() {
+        return _workDir;
+    }
+
+    private void unzipPublicHtml() {
+        File[] fileList = _libDir.listFiles(new FilenameFilter() {
+                public boolean accept(File dir, String name) {
+                    return name.startsWith("simplex-public-html");
+                }
+            });
+        if (fileList != null) {
+            try {
+                ZipInputStream zis = new ZipInputStream(new FileInputStream(fileList[0]));
+                ZipEntry entry;
+                // Processing the package
+                while((entry = zis.getNextEntry()) != null) {
+                    if(entry.isDirectory()) {
+                        new File(_workDir, entry.getName()).mkdir();
+                        continue;
+                    }
+
+                    File destFile = new File(_workDir, entry.getName());
+                    if (!destFile.getParentFile().exists()) destFile.getParentFile().mkdirs();
+
+                    copyInputStream(zis, new BufferedOutputStream(new FileOutputStream(destFile)));
+                }
+                zis.close();
+            } catch (IOException e) {
+                throw new RuntimeException("Unzipping public HTML resources failed.", e);
+            }
+        }
+    }
+
+    private static void copyInputStream(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[1024];
+        int len;
+        while((len = in.read(buffer)) >= 0) out.write(buffer, 0, len);
+        out.close();
+    }
+
 }
