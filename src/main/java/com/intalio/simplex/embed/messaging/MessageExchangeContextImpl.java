@@ -23,6 +23,7 @@ import com.intalio.simplex.http.datam.FEJOML;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.filter.LoggingFilter;
 import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
@@ -57,11 +58,11 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
     }
 
     public void invokePartnerReliable(PartnerRoleMessageExchange partnerRoleMessageExchange) throws ContextException {
-        //To change body of implemented methods use File | Settings | File Templates.
+        throw new UnsupportedOperationException("Reliable invocation not supported.");
     }
 
     public void invokePartnerTransacted(PartnerRoleMessageExchange partnerRoleMessageExchange) throws ContextException {
-        //To change body of implemented methods use File | Settings | File Templates.
+        throw new UnsupportedOperationException("Transactional invocation not supported.");
     }
 
     public void invokeRestful(RESTOutMessageExchange restOutMessageExchange) throws ContextException {
@@ -83,7 +84,12 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             WebResource.Builder wrb = wr.type(cntType);
             handleOutHeaders(payload, wrb);
             String cnt = FEJOML.fromXML(unwrapToPayload(payload), cntType);
-            resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class, cnt);
+            try {
+                resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class, cnt);
+            } catch (Exception e) {
+                fail(res.getUrl(), "requestError", e.getCause().getMessage(), restOutMessageExchange);
+                return;
+            }
         } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
 
         if (resp.getStatus() == 204) {
