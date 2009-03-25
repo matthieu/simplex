@@ -39,17 +39,18 @@ import java.util.*;
 public class EmbeddedProcessConf implements ProcessConf {
     private static final String SIMPEL_ENDPOINT_NS = "http://ode.apache.org/simpel/1.0/endpoint";
 
+    private QName _pid;
     private ProcessModel _oprocess;
     private Descriptor _desc;
 
-    public EmbeddedProcessConf(ProcessModel oprocess, Descriptor desc) {
+    public EmbeddedProcessConf(QName pid, ProcessModel oprocess, Descriptor desc) {
         _oprocess = oprocess;
         _desc = desc;
+        _pid = pid;
     }
 
     public QName getProcessId() {
-        return new QName(_oprocess.getQName().getNamespaceURI(),
-                _oprocess.getQName().getLocalPart());
+        return _pid;
     }
 
     public QName getType() {
@@ -57,8 +58,8 @@ public class EmbeddedProcessConf implements ProcessConf {
     }
 
     public long getVersion() {
-        // TODO implement versioning
-        return 0;
+        String localPart = _pid.getLocalPart();
+        return Long.parseLong(localPart.substring(localPart.lastIndexOf("-")));
     }
 
     public boolean isTransient() {

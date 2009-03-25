@@ -76,7 +76,9 @@ public class EmbeddedStore implements ProcessStore {
     }
 
     public ProcessConf getProcessConfiguration(QName processId) {
-        return new EmbeddedProcessConf(_processes.get(processId), _descriptors.get(processId));
+        if (_processes.get(processId) != null)
+            return new EmbeddedProcessConf(processId, _processes.get(processId), _descriptors.get(processId));
+        else return null;
     }
 
     public void registerListener(ProcessStoreListener psl) {

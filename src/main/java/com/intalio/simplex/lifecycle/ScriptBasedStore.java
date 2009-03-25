@@ -26,9 +26,12 @@ import org.apache.ode.bpel.iapi.ProcessStoreEvent;
 import org.apache.ode.bpel.rapi.ProcessModel;
 import org.apache.ode.bpel.rapi.Serializer;
 
+import javax.xml.namespace.QName;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 public class ScriptBasedStore extends EmbeddedStore {
     private static final Logger __log = Logger.getLogger(ScriptBasedStore.class);
@@ -78,48 +81,50 @@ public class ScriptBasedStore extends EmbeddedStore {
                     List<File> cbps = listFilesRecursively(_workDir, _cbpFilter);
 
                     // This whole mumbo jumbo is just about populating these lists
-                    List<File> newer = new ArrayList<File>();
-                    List<File> unknown = new ArrayList<File>();
-                    List<File> removed = new ArrayList<File>(cbps);
+                    Set<File> toActivate = new HashSet<File>();
+                    Set<File> newer = new HashSet<File>();
+                    Set<File> unknown = new HashSet<File>();
+                    Set<File> removed = new HashSet<File>(cbps);
 
                     for (File script : scripts) {
                         String scriptRelative = noExt(relativePath(_scriptsDir, script));
 
-                        boolean found = false;
+                        // Can't easily reuse findNextVersion as we also want to know about removed scripts
+                        int oldies = 0;
+                        int scriptCbps = 0;
                         for (File cbp : cbps) {
-                            String cbpRelative = noExt(relativePath(_workDir, cbp));
+                            String cbpRelative = noVerExt(relativePath(_workDir, cbp));
                             if (scriptRelative.equals(cbpRelative)) {
-                                found = true;
                                 removed.remove(cbp);
-                                if (cbp.lastModified() < script.lastModified())
-                                    newer.add(script);
-                                else if (firstRun)
-                                    unknown.add(script);
+                                scriptCbps++;
+                                if (cbp.lastModified() < script.lastModified()) oldies++;
                             }
                         }
-
-                        if (!found) unknown.add(script);
+                        if (scriptCbps > 0) {
+                            if (oldies == scriptCbps) newer.add(script);
+                            else if (firstRun) toActivate.add(script);
+                        } else unknown.add(script);
                     }
 
-                    ArrayList<File> toRebuild = new ArrayList<File>(newer);
-                    for (File p : toRebuild) {
+                    // Newer and unknown processes both just need compile (at least for now)
+                    newer.addAll(unknown);
+                    for (File p : newer) {
                         __log.debug("Recompiling " + p);
-                        ProcessModel oprocess = compileProcess(p);
+                        ProcessModel oprocess = compileProcess(p, cbps);
                         __log.info("Process " + oprocess.getQName().getLocalPart()  + " deployed successfully.\n");
                     }
 
-                    // Processes that haven't been activated yet (restart)
-                    for (File p : unknown) {
-                        __log.debug("Activating " + p);
-                        ProcessModel oprocess = compileProcess(p);
-                        __log.debug("Process " + oprocess.getQName().getLocalPart()  + " reactivated successfully.\n");
+                    for (File p : toActivate) {
+                        reloadProcess(p, cbps);
                     }
+
                     for (File p : removed) {
                         Serializer ser = new Serializer(new FileInputStream(p));
                         ProcessModel oprocess = ser.readPModel();
-                        fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.UNDEPLOYED, oprocess.getQName(), null));
-                        _processes.remove(oprocess.getQName());
-                        _descriptors.remove(oprocess.getQName());
+                        QName pid = toPid(oprocess.getQName(), versionFromCbpName(p.getName()));
+                        fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.UNDEPLOYED, pid, null));
+                        _processes.remove(pid);
+                        _descriptors.remove(pid);
                         p.delete();
                     }
 
@@ -145,8 +150,11 @@ public class ScriptBasedStore extends EmbeddedStore {
             run = false;
         }
 
-        private ProcessModel compileProcess(File pfile) throws IOException, CompilationException {
-            File targetCbp = new File(_workDir, noExt(relativePath(_scriptsDir, pfile)) + ".cbp");
+        private ProcessModel compileProcess(File pfile, List<File> cbps) throws IOException, CompilationException {
+            String radical = noExt(relativePath(_scriptsDir, pfile));
+            int version = findNextVersion(cbps, radical);
+
+            File targetCbp = new File(_workDir, radical + "-" + version + ".cbp");
             targetCbp.getParentFile().mkdirs();
 
             FileOutputStream cbpFos = new FileOutputStream(targetCbp, false);
@@ -156,13 +164,37 @@ public class ScriptBasedStore extends EmbeddedStore {
             ser.writePModel(oprocess, cbpFos);
             cbpFos.close();
 
-            _processes.put(oprocess.getQName(), oprocess);
-            _descriptors.put(oprocess.getQName(), desc);
+            QName pid = toPid(oprocess.getQName(), version);
+            _processes.put(pid, oprocess);
+            _descriptors.put(pid, desc);
 
-            fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, oprocess.getQName(), null));
-            fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, oprocess.getQName(), null));
+            fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.DEPLOYED, pid, null));
+            fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, pid, null));
 
             return oprocess;
+        }
+
+        private void reloadProcess(File pfile, List<File> cbps) throws IOException, CompilationException {
+            String radical = noExt(relativePath(_scriptsDir, pfile));
+            int version = findNextVersion(cbps, radical) - 1;
+
+            File targetCbp = new File(_workDir, radical + "-" + version + ".cbp");
+            Serializer ser = new Serializer(new FileInputStream(targetCbp));
+            try {
+                ProcessModel pmodel = ser.readPModel();
+                Descriptor desc = _compiler.rebuildDescriptor(pmodel);
+
+                QName pid = toPid(pmodel.getQName(), version);
+                _processes.put(pid, pmodel);
+                _descriptors.put(pid, desc);
+
+                fireEvent(new ProcessStoreEvent(ProcessStoreEvent.Type.ACTIVATED, pid, null));
+            } catch (Exception e) {
+                __log.error("Couldn't read compiled process file " + targetCbp.getAbsolutePath()
+                        + ", it seems corrupted. As a result the process " + pfile.getAbsolutePath()
+                        + " hasn't been reloaded.", e);
+                return;
+            }
         }
 
         private ArrayList<File> listFilesRecursively(File root, FileFilter filter) {
@@ -194,6 +226,37 @@ public class ScriptBasedStore extends EmbeddedStore {
 
         private String noExt(String f) {
             return f.substring(0, f.lastIndexOf("."));
+        }
+
+        private String noVerExt(String f) {
+            return f.substring(0, f.lastIndexOf("-"));
+        }
+
+        private int findNextVersion(List<File> cbps, String radical) {
+            int newVer = 0;
+            for (File cbp : cbps) {
+                String cbpName = relativePath(_workDir, cbp);
+                if (cbpName.startsWith(radical)) {
+                    int cbpVersion = versionFromCbpName(cbpName);
+                    if (cbpVersion > newVer) newVer = cbpVersion;
+                }
+            }
+            return newVer + 1;
+        }
+
+        private QName toPid(QName pname, int version) {
+            return new QName(pname.getNamespaceURI(), pname.getLocalPart() + "-" + version);
+        }
+
+        private int versionFromCbpName(String cbpName) {
+            int dashIdx = cbpName.lastIndexOf("-");
+            String verStr = cbpName.substring(dashIdx + 1, cbpName.lastIndexOf("."));
+            try {
+                return Integer.parseInt(verStr);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                return -1;
+            }
         }
     }
 
