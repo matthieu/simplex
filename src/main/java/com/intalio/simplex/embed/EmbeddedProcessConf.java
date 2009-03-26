@@ -59,7 +59,9 @@ public class EmbeddedProcessConf implements ProcessConf {
 
     public long getVersion() {
         String localPart = _pid.getLocalPart();
-        return Long.parseLong(localPart.substring(localPart.lastIndexOf("-")));
+        if (localPart.lastIndexOf("-") > 0)
+            return Long.parseLong(localPart.substring(localPart.lastIndexOf("-")));
+        else return 0;
     }
 
     public boolean isTransient() {
