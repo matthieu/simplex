@@ -185,6 +185,7 @@ public class ScriptBasedStore extends EmbeddedStore {
                 Descriptor desc = _compiler.rebuildDescriptor(pmodel);
 
                 QName pid = toPid(pmodel.getQName(), version);
+
                 _processes.put(pid, pmodel);
                 _descriptors.put(pid, desc);
 
