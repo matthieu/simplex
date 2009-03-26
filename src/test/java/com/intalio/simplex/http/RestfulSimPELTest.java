@@ -408,5 +408,29 @@ public class RestfulSimPELTest extends TestCase {
         assertTrue(doneResponse.indexOf("<name>johndoe</name>") > 0);
     }
 
+    public static final String REQ_ERROR =
+            "processConfig.inMem = false;\n" +
+            "processConfig.address = \"/reqerror\";\n" +
+
+            "process RequestError {\n" +
+            "   receive(self) { |query|\n" +
+            "       resp = request(\"http://localhost:9999/nowhere\");\n" +
+            "       reply(resp);\n" +
+            "   }\n" +
+            "}";
+
+    public void testRequestError() throws Exception {
+        server.start();
+        server.deploy(REQ_ERROR);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/reqerror");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<empty/>");
+        String response = resp.getEntity(String.class);
+        System.out.println("=> " + response);
+    }
 
 }
