@@ -40,10 +40,10 @@ public class AdminWebResource {
         _store = store;
     }
     
-    @GET @Produces("text/html")
+    @GET @Produces("application/xhtml+xml")
     public String getHTML() {
         StringBuffer res = new StringBuffer();
-        res.append(htmlHeader("Administration"));
+        res.append(HttpUtil.htmlHeader("Administration"));
         if (_store.getProcesses().size() == 0) {
             res.append("<p>").append("No processes have been deployed yet. Just drop your " +
                     "SimPEL files in the script folder.").append("</p>");
@@ -53,7 +53,7 @@ public class AdminWebResource {
                 res.append("<li>").append(pname.getLocalPart()).append("</li>");
             }
         }
-        res.append(htmlFooter());
+        res.append(HttpUtil.htmlFooter());
         return res.toString();
     }
 
@@ -64,39 +64,5 @@ public class AdminWebResource {
         doc.appendChild(root);
         return DOMUtils.domToString(doc);
     }
-
-    private static final MessageFormat HTML_HEADER = new MessageFormat(
-            "<html>\n" +
-            "  <head>\n" +
-            "    <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"/>\n" +
-            "    <title>Simplex, the lightweight SimPEL runtime</title>\n" +
-            "    <link rel=\"stylesheet\" href=\"/css/default.css\" type=\"text/css\"/>\n" +
-            "    <link rel=\"stylesheet\" href=\"/css/syntax.css\" type=\"text/css\"/>\n" +
-            "  </head>\n" +
-            "  <body>\n" +
-            "    <div id=\"wrap\">\n" +
-            " \n" +
-            "      <h1 id=\"header\">\n" +
-            "        <a href=\"#\">{0}</a>\n" +
-            "      </h1>\n" +
-            "      <div id=\"content\">");
-
-    private static final String HTML_FOOTER =
-            "      </div>\n" +
-            " \n" +
-            "      <div id=\"footer\">\n" +
-            "        Copyright (C) 2008-2009 <a href=\"http://www.intalio.com\">Intalio, Inc</a>\n" +
-            "      </div>\n" +
-            "    </div>\n" +
-            "  </body>\n" +
-            "</html>";
-
-    private String htmlHeader(String title) {
-        return HTML_HEADER.format(new Object[] {title});
-    }
-    private String htmlFooter() {
-        return HTML_FOOTER;
-    }
-
 
 }

@@ -170,27 +170,13 @@ public class ProcessWebResource {
         return post(FEJOML.formToXML(formParams), FEJOML.XML);
     }
 
-
-//    @GET @Produces("application/xhtml+xml")
-//    public String getXHTML() {
-//        StringBuffer res = new StringBuffer();
-//        res.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\"><body>");
-//        res.append("<h3>Process ").append(_service).append("</h3>");
-//        res.append("<p>To start the process POST an appropriate representation <a href=\"");
-//        res.append("process/").append(_service.getLocalPart());
-//        res.append("\">").append("process/").append(_service.getLocalPart()).append("</a>");
-//        res.append("</p>");
-//        res.append("</body></html>");
-//        return res.toString();
-//    }
-//
-//    @GET @Produces("application/xml")
-//    public String getXML() {
-//        StringBuffer res = new StringBuffer();
-//        res.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-//        res.append("<process>");
-//        res.append("<start>").append("process/").append(_service.getLocalPart()).append("</start>");
-//        res.append("</process>");
-//        return res.toString();
-//    }
+    @GET @Produces("application/xhtml+xml")
+    public String getXHTML() {
+        StringBuffer res = new StringBuffer();
+        res.append(HttpUtil.htmlHeader("Process Page"));
+        res.append("<p>A process answers to this resource, accepted methods are " + _resource.methods()
+                + ". The consumed content type is " + _resource.contentType + "</p>");        
+        res.append(HttpUtil.htmlFooter());
+        return res.toString();
+    }
 }

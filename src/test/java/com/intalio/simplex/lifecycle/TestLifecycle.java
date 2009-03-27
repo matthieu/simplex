@@ -81,7 +81,6 @@ public class TestLifecycle extends TestCase {
     public void testDeployEmpty() throws Exception {
         writeProcessFile("empty.simpel", "");
 
-
         File cbp = new File(rootDir, "work/empty-1.cbp");
         assertTrue(cbp.exists());
         assertTrue(cbp.length() == 0);
