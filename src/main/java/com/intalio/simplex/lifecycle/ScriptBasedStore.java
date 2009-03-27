@@ -179,6 +179,9 @@ public class ScriptBasedStore extends EmbeddedStore {
             int version = findNextVersion(cbps, radical) - 1;
 
             File targetCbp = new File(_workDir, radical + "-" + version + ".cbp");
+            // Failed compilation
+            if (targetCbp.length() == 0) return;
+
             Serializer ser = new Serializer(new FileInputStream(targetCbp));
             try {
                 ProcessModel pmodel = ser.readPModel();

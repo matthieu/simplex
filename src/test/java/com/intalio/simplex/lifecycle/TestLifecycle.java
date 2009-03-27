@@ -81,16 +81,18 @@ public class TestLifecycle extends TestCase {
     public void testDeployEmpty() throws Exception {
         writeProcessFile("empty.simpel", "");
 
-        File cbp = new File(rootDir, "work/empty.cbp");
+
+        File cbp = new File(rootDir, "work/empty-1.cbp");
         assertTrue(cbp.exists());
         assertTrue(cbp.length() == 0);
 
         writeProcessFile("empty.simpel", HELLO_WORLD);
-        cbp = new File(rootDir, "work/empty.cbp");
-        assertTrue(cbp.exists());
-        assertTrue(cbp.length() > 0);
+        File cbp2 = new File(rootDir, "work/empty-2.cbp");
+        assertTrue(cbp2.exists());
+        assertTrue(cbp2.length() > 0);
 
         new File(rootDir, "scripts/empty.simpel").delete();
+        cbp2.delete();
         cbp.delete();
     }
 
@@ -99,7 +101,7 @@ public class TestLifecycle extends TestCase {
         writeProcessFile("load-js.simpel", "load('foo.js');\n" + HELLO_WORLD);
 
         Thread.sleep(2000);
-        File cbp = new File(rootDir, "work/load-js.cbp");
+        File cbp = new File(rootDir, "work/load-js-1.cbp");
         assertTrue(cbp.exists());
         assertTrue(cbp.length() > 0);
 
