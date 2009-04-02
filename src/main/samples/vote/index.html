@@ -19,7 +19,7 @@
             var voteXml = <vote><participants></participants></vote>;
             voteXml.text = $("#votetext").attr("value");
             $("#voters").find("input").each(function() {
-              voteXml.participants.appendChild(<email>{this.value}</email>);
+              voteXml.participants.appendChild(<name>{this.value}</name>);
             });
             console.log(voteXml);
 
@@ -81,20 +81,18 @@ function refreshTally(url) {
       </h1>
       <div id="content">
 
-        <p>This sample form lets you play a bit with the vote process.</p>
+    <p>Description:</p>
+    <textarea id="votetext" rows="2" cols="40"></textarea>
 
-        <p>Vote Description:</p>
-        <textarea id="votetext" rows="2" cols="40"></textarea>
+    <p>Voters names:</p>
+    <div id="voters">
+      <p><input id="voter" type="text"/><a id="addvoter" href="#">Add</a></p>
+    </div>
 
-        <p>Voters:</p>
-        <div id="voters">
-          <p><input id="voter" type="text"/><a id="addvoter" href="#">Add</a></p>
-        </div>
+    <p><input id="send" type="submit"/></p>
 
-        <p><input id="send" type="submit"/></p>
-
-        <div id="ballots"></div>
-        <div id="tally"></div>
+    <div id="ballots"></div>
+    <div id="tally"></div>
       </div>
     </div>
   </body>
