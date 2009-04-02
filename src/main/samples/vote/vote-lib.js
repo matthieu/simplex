@@ -1,7 +1,7 @@
 
-function updateBallots(ballots, newBallot, email) {
+function updateBallots(ballots, newBallot, name) {
   b = <ballot>{newBallot.text()}</ballot>;
-  b.@email = email;
+  b.@name = name;
   ballots.appendChild(b);
   return ballots;
 }
@@ -19,7 +19,7 @@ function getCurrentTally(ballots) {
   return tally;
 }
 
-function getUserBallot(ballots, email) {
-  return ballots.ballot.(@email == email);
+function getUserBallot(ballots, name) {
+  return ballots.ballot.(@name == name);
 }
 

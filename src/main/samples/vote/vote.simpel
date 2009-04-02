@@ -5,20 +5,24 @@ rootUrl = "http://localhost:3434"
 emailUrl = "http://localhost:3434/api/mock/email";
 load("vote-lib.js");
 
+// Provides links to additional resources that can be used during the vote.
 function addLinks(vote, addr) {
-  vote.appendChild(<link rel="cancel">{rootUrl + addr + "/cancel"}</link>);
-  vote.appendChild(<link rel="tally">{rootUrl + addr + "/tally"}</link>);
+  vote.appendChild(<action rel="cancel" href={rootUrl + addr + "/cancel"} method="POST"/>);
+  vote.appendChild(<link rel="tally" href={rootUrl + addr + "/tally"} />);
   return vote;
 }
 
-function createBallotInfo(vote, voteUrl, email) {
+// Links to a ballot resource.
+function createBallotInfo(vote, voteUrl, name) {
   info = vote.copy();
-  info.appendChild(<link rel="ballot">{rootUrl + voteUrl + "/ballot/" + email}</link>);
+  info.appendChild(<link rel="ballot" href={rootUrl + voteUrl + "/ballot/" + name} />);
+  info.appendChild(<action rel="ballot" href={rootUrl + voteUrl + "/ballot/" + name} method="POST" />);
   return info;
 }
 
-function buildBallotUrl(processUrl, email) {
-  return rootUrl + processUrl.slice(4) + "/" + email;
+// Utility function to build the target URL of a ballot.
+function buildBallotUrl(processUrl, name) {
+  return rootUrl + processUrl.slice(4) + "/" + name;
 }
 
 process Vote {
@@ -30,17 +34,17 @@ process Vote {
 
   // Sending an e-mail to all participants to let them know a vote started
   m = 0;
-  while(m < vote.participants.email.length()) {
-    inviteEmail = <email><to>{ vote.participants.email[m] + "@intalio.com" }</to></email>;
+  while(m < vote.participants.name.length()) {
+    inviteEmail = <email><to>{ vote.participants.name[m] + "@intalio.com" }</to></email>;
     inviteEmail.body = "A vote has been started on '" + vote.text + 
-      "'. Please cast your vote at " + buildBallotUrl(self, vote.participants.email[m]) + ".";
+      "'. Please cast your vote at " + buildBallotUrl(self, vote.participants.name[m]) + ".";
     request(emailUrl, "post", inviteEmail);
     m = m + 1;
   }
 
   // Declaring all necessary resources
   tally = resource("/tally");
-  ballot = resource("/ballot/{email}");
+  ballot = resource("/ballot/{name}");
   close = resource("/close");
   cancel = resource("/cancel");
 
@@ -58,21 +62,21 @@ process Vote {
   } onQuery(tally) {
     currentTally = getCurrentTally(ballots);
     reply(currentTally);
-  } onReceive(ballot) { |b, email|
+  } onReceive(ballot) { |b, name|
     if (voteOpen == true) {
-      ballots = updateBallots(ballots, b.ballot, email);
-      userBallot = getUserBallot(ballots, email);
+      ballots = updateBallots(ballots, b.ballot, name);
+      userBallot = getUserBallot(ballots, name);
       reply(userBallot);
     } else {
       resp = <vote>Vote is closed.</vote>;
       reply(resp);
     }
-  } onQuery(ballot) { |email|
-    userBallot = getUserBallot(ballots, email);
+  } onQuery(ballot) { |name|
+    userBallot = getUserBallot(ballots, name);
     if (userBallot.length != 0) {
       reply(userBallot);
     } else {
-      info = createBallotInfo(vote, self, email);
+      info = createBallotInfo(vote, self, name);
       reply(info);
     }
   } onReceive(close) {
