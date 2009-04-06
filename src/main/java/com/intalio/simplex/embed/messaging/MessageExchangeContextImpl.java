@@ -83,12 +83,21 @@ public class MessageExchangeContextImpl implements MessageExchangeContext {
             String cntType = contentType(payload);
             WebResource.Builder wrb = wr.type(cntType);
             handleOutHeaders(payload, wrb);
-            String cnt = FEJOML.fromXML(unwrapToPayload(payload), cntType);
-            try {
-                resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class, cnt);
-            } catch (Exception e) {
-                fail(res.getUrl(), "requestError", e.getCause().getMessage(), restOutMessageExchange);
-                return;
+            if (!"GET".equals(res.getMethod().toUpperCase())) {
+                String cnt = FEJOML.fromXML(unwrapToPayload(payload), cntType);
+                try {
+                    resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class, cnt);
+                } catch (Exception e) {
+                    fail(res.getUrl(), "requestError", e.getCause().getMessage(), restOutMessageExchange);
+                    return;
+                }
+            } else {
+                try {
+                    resp = wrb.method(res.getMethod().toUpperCase(), ClientResponse.class);
+                } catch (Exception e) {
+                    fail(res.getUrl(), "requestError", e.getCause().getMessage(), restOutMessageExchange);
+                    return;
+                }
             }
         } else resp = wr.method(res.getMethod().toUpperCase(), ClientResponse.class);
 
