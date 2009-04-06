@@ -1,0 +1,54 @@
+processConfig.inMem = false;
+processConfig.address = "/absence";
+
+shotBase = "http://localhost:3000"
+myBase = "http://localhost:3434";
+
+function buildTask(login, password, callback) {
+  var formHtml = "{{ creator.fullname }} requested leave of absence.<label><input type='radio' name='data[accept]' value='true'> Accept</label><label><input type='radio' name='data[accept]' value='false'> Deny</label>Comment: <textarea name='data[comment]'></textarea>";
+  task = <task><title>SimPEL Task</title>
+            <description>Test task created from a SimPEL process.</description>
+            <owner>mriou</owner>
+            <webhooks type="array"><webhook><event>completed</event><url>{callback}</url></webhook></webhooks>
+            <form><html>{formHtml}</html></form>
+         </task>;
+
+  task.headers.basicAuth.login = login;
+  task.headers.basicAuth.password = password;
+  task.headers.Accept = "application/xml";
+  return task;
+}
+
+process TaskCreator { 
+  callback = resource("/callback");
+  
+  receive(self) { |s|
+    task = buildTask("mriou", "secret", myBase + callback);
+    resp = request(shotBase + "/tasks", "POST", task);
+    taskLoc = resp.headers.Location;
+    reply(resp);
+  }
+  print("### waiting for callback for " + taskLoc);
+
+  receive(callback) { |msg|
+    print("### callback received!! " + msg);
+    reply(msg);
+  }
+
+  // Getting the task data
+
+  taskReq = <placeholder/>;
+  taskReq.headers.basicAuth.login = "mriou";
+  taskReq.headers.basicAuth.password = "secret";
+  taskReq.headers.Accept = "application/xml";
+
+  updatedTask = request(taskLoc + ".xml", "GET", taskReq);
+  if (updatedTask.data.accept == "true") {
+    print("### Absence request accepted");
+    foo = <foo/>;
+  } else {
+    print("### Absence request refused");
+    foo = <bar/>;
+  }
+}
+
