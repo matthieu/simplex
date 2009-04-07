@@ -430,7 +430,30 @@ public class RestfulSimPELTest extends TestCase {
         ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
                 .post(ClientResponse.class, "<empty/>");
         String response = resp.getEntity(String.class);
+        // Getting here shows we're fine already
         System.out.println("=> " + response);
     }
 
+    public static final String EMPTY_REPLY =
+            "processConfig.inMem = false;\n" +
+            "processConfig.address = \"/emptyreply\";\n" +
+
+            "process RequestError {\n" +
+            "   receive(self) { |query|\n" +
+            "       reply();\n" +
+            "   }\n" +
+            "}";
+
+    public void testEmptyReply() throws Exception {
+        server.start();
+        server.deploy(EMPTY_REPLY);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/emptyreply");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<empty/>");
+        assertTrue(resp.getStatus() == 201);
+    }
 }

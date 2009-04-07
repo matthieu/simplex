@@ -105,17 +105,19 @@ public class ProcessWebResource {
 
             // TODO handle faults and failures
 
-            if (mex.getResponse() == null) {
-                return Response.status(204).build();
+            boolean hasResponse = mex.getResponse() != null && mex.getResponse().getMessage() != null;
+            Response.ResponseBuilder b;
+            if (mex.isInstantiatingResource()) {
+                b = Response.status(201).header("Location", _root + mex.getResource().getUrl());
             } else {
-                Response.ResponseBuilder b;
-                if (mex.isInstantiatingResource())
-                    b = Response.status(201).header("Location", _root + mex.getResource().getUrl());
-                else
-                    b = Response.status(200);
-                return b.entity(FEJOML.fromXML(unwrapResponse(mex.getResponse().getMessage()), targetFormat))
-                        .build();
+                if (hasResponse) b = Response.status(200);
+                else b = Response.status(204);
             }
+
+            if (hasResponse)
+                b.entity(FEJOML.fromXML(unwrapResponse(mex.getResponse().getMessage()), targetFormat));
+
+            return b.build();
         }
         else return Response.status(405).header("Allow", _resource.methods()).build();
     }
