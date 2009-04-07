@@ -4,27 +4,45 @@ processConfig.address = "/absence";
 shotBase = "http://localhost:3000"
 myBase = "http://localhost:3434";
 
-function buildTask(login, password, callback) {
-  var formHtml = "{{ creator.fullname }} requested leave of absence.<label><input type='radio' name='data[accept]' value='true'> Accept</label><label><input type='radio' name='data[accept]' value='false'> Deny</label>Comment: <textarea name='data[comment]'></textarea>";
-  task = <task><title>SimPEL Task</title>
-            <description>Test task created from a SimPEL process.</description>
-            <owner>mriou</owner>
+function addHeaders(login, password, req) {
+  req.headers.basicAuth.login = login;
+  req.headers.basicAuth.password = password;
+  req.headers.Accept = "application/xml";
+  return req;
+}
+
+function buildAbsenceRequest(login, password, assignee, callback, from, to) {
+  var formHtml = "<fieldset><legend>AbsenceRequest</legend>" + 
+                  "<p>{{ creator.fullname }} requested a leave of absence.</p>" + 
+                  "<dl><dt>Accept</dt><dd><input type='radio' name='data[accept]' value='true'></dd>" + 
+                      "<dt>Refuse</dt><dd><input type='radio' name='data[accept]' value='false'></dd>" + 
+                      "<dt>Comment: </dt><dd><textarea name='data[comment]'></textarea></dd>" +
+                      "<dt>From: </dt><dd><input name='data[from]' type='text' class='date' value = '" + from + "'/></dd>" +
+                      "<dt>To: </dt><dd><input name='data[to]' type='text' class='date' value='" + to + "'/></dd>" +
+                  "</dl></fieldset>";
+  task = <task><title>Leave of absence request</title>
+            <description>Leave of absence request</description>
+            <owner>{assignee}</owner>
             <webhooks type="array"><webhook><event>completed</event><url>{callback}</url></webhook></webhooks>
             <form><html>{formHtml}</html></form>
          </task>;
+  return addHeaders(login, password, task);
+}
 
-  task.headers.basicAuth.login = login;
-  task.headers.basicAuth.password = password;
-  task.headers.Accept = "application/xml";
-  return task;
+function buildConfirmation(login, password, assignee, result, from, to) {
+  task = <task><title>Absence request response</title>
+            <description>Your absence request from {from} to {to} has been {result}.</description>
+            <owner>{assignee}</owner>
+         </task>;
+  return addHeaders(login, password, task);
 }
 
 process TaskCreator { 
   callback = resource("/callback");
   
   receive(self) { |s|
-    task = buildTask("mriou", "secret", myBase + callback);
-    resp = request(shotBase + "/tasks", "POST", task);
+    leave = buildAbsenceRequest("mriou", "secret", "bond", myBase + callback, "Sun, 5 Apr 09", "Sun, 12 Apr 09");
+    resp = request(shotBase + "/tasks", "POST", leave);
     taskLoc = resp.headers.Location;
     reply(resp);
   }
@@ -38,17 +56,18 @@ process TaskCreator {
   // Getting the task data
 
   taskReq = <placeholder/>;
-  taskReq.headers.basicAuth.login = "mriou";
-  taskReq.headers.basicAuth.password = "secret";
-  taskReq.headers.Accept = "application/xml";
-
+  taskReq = addHeaders("mriou", "secret", taskReq);
   updatedTask = request(taskLoc + ".xml", "GET", taskReq);
   if (updatedTask.data.accept == "true") {
-    print("### Absence request accepted");
-    foo = <foo/>;
+    print("### Absence request accepted" + updatedTask.data.from);
+    status = "accepted";
   } else {
     print("### Absence request refused");
-    foo = <bar/>;
+    status = "refused";
   }
+
+  confirmation = buildConfirmation("mriou", "secret", "mriou", 
+    status, updatedTask.data.from.text() , updatedTask.data.to.text());
+  request(shotBase + "/tasks", "POST", confirmation);
 }
 
