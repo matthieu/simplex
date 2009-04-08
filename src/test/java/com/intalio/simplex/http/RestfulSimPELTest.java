@@ -456,4 +456,28 @@ public class RestfulSimPELTest extends TestCase {
                 .post(ClientResponse.class, "<empty/>");
         assertTrue(resp.getStatus() == 201);
     }
+
+    public static final String IMPLICIT_REPLY =
+            "processConfig.inMem = false;\n" +
+            "processConfig.address = \"/implicitreply\";\n" +
+
+            "process RequestError {\n" +
+            "   receive(self) { |query|\n" +
+            "       reply();\n" +
+            "   }\n" +
+            "}";
+
+    public void testImplicitReply() throws Exception {
+        server.start();
+        server.deploy(IMPLICIT_REPLY);
+
+        ClientConfig cc = new DefaultClientConfig();
+        Client c = Client.create(cc);
+
+        WebResource wr = c.resource("http://localhost:3434/implicitreply");
+        ClientResponse resp = wr.path("/").accept("application/xml").type("application/xml")
+                .post(ClientResponse.class, "<empty/>");
+        assertTrue(resp.getStatus() == 201);
+    }
+
 }
