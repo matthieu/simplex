@@ -90,4 +90,4 @@ if $cygwin; then
     LOG=`cygpath --windows "$LOG"`
 fi
 
-exec "$JAVACMD" $SIMPLEX_JAVAOPTS -Djava.util.logging.config.file="$SIMPLEX_HOME/log/logging.properties" -cp "$LOCALCLASSPATH" com.intalio.simplex.StandaloneServer "$SIMPLEX_HOME" "$@"
+exec "$JAVACMD" $SIMPLEX_JAVAOPTS -Dsimplex.home="$SIMPLEX_HOME" -Djava.util.logging.config.file="$SIMPLEX_HOME/log/logging.properties" -cp "$LOCALCLASSPATH" com.intalio.simplex.StandaloneServer "$SIMPLEX_HOME" "$@"
