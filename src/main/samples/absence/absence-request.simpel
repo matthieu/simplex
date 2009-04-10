@@ -41,7 +41,8 @@ process TaskCreator {
   callback = resource("/callback");
   
   receive(self) { |s|
-    leave = buildAbsenceRequest("mriou", "secret", "bond", myBase + callback, "Sun, 5 Apr 09", "Sun, 12 Apr 09");
+    leave = buildAbsenceRequest("mriou", "secret", "bond", 
+      myBase + callback, "Sun, 5 Apr 09", "Sun, 12 Apr 09");
     resp = request(shotBase + "/tasks", "POST", leave);
     taskLoc = resp.headers.Location;
     reply(resp);
@@ -50,7 +51,7 @@ process TaskCreator {
 
   receive(callback) { |msg|
     print("### callback received!! " + msg);
-    reply(msg);
+    reply();
   }
 
   // Getting the task data
