@@ -47,9 +47,9 @@ JAVAX               = struct(
 JERSEY              = group("jersey-server", "jersey-client", "jersey-core", :under=>"com.sun.jersey", :version=>"1.0.1")
 JETTY               = group("jetty", "jetty-util", "servlet-api-2.5", :under=>"org.mortbay.jetty", :version=>"6.1.11")
 LOG4J               = "log4j:log4j:jar:1.2.15"
-ODE                 = group("ode-bpel-api", "ode-bpel-compiler", "ode-bpel-dao", "ode-dao-jpa", "ode-runtimes", 
-                            "ode-engine", "ode-il-common", "ode-jacob", "ode-scheduler-simple", 
-                            "ode-utils", :under=>"org.apache.ode", :version=>"1.3-SNAPSHOT")
+ODE                 = group("ode-rest-bpel-api", "ode-rest-bpel-compiler", "ode-rest-bpel-dao", "ode-rest-dao-jpa", 
+                            "ode-rest-runtimes", "ode-rest-engine", "ode-rest-il-common", "ode-rest-jacob", 
+                            "ode-rest-scheduler-simple", "ode-rest-utils", :under=>"org.apache.ode", :version=>"0.1")
 OPENJPA             = ["org.apache.openjpa:openjpa:jar:1.1.0",
                        "net.sourceforge.serp:serp:jar:1.13.1"]
 SIMPEL              = "com.intalio.simpel:simpel:jar:0.1-SNAPSHOT"
