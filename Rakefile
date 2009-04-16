@@ -52,13 +52,14 @@ ODE                 = group("ode-rest-bpel-api", "ode-rest-bpel-compiler", "ode-
                             "ode-rest-scheduler-simple", "ode-rest-utils", :under=>"org.apache.ode", :version=>"0.1")
 OPENJPA             = ["org.apache.openjpa:openjpa:jar:1.1.0",
                        "net.sourceforge.serp:serp:jar:1.13.1"]
-SIMPEL              = "com.intalio.simpel:simpel:jar:0.1-SNAPSHOT"
+SIMPEL              = "com.intalio.simpel:simpel:jar:0.1"
 TRANQL              = ["tranql:tranql-connector:jar:1.1", COMMONS.primitives]
 WSDL4J              = "wsdl4j:wsdl4j:jar:1.6.2"
 XERCES              = "xerces:xercesImpl:jar:2.8.1"
 
 repositories.remote << "http://repo1.maven.org/maven2"
 repositories.remote << "http://download.java.net/maven/2"
+repositories.remote << "http://www.intalio.org/public/maven2"
 
 desc "Simplex process execution server, tightly tied to SimPEL."
 define "simplex" do
